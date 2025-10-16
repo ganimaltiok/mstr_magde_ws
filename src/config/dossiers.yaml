@@ -1,267 +1,268 @@
 acente_ekstresi_devreden:
+  cache_policy: none
   cube_id: 646B722F4EF17FF27579B4BD2993E49D
   dossier_id: FFBBA8D448F5B2D971658FAE8F12CE97
   filters:
     agency_name: W3AE3030CEB5F4C18A32456DE89C73228
-  is_csv_cached: 0
   viz_keys:
     detail: null
     summary: K52
 acente_ilk_uretim_bilgilendirme:
+  cache_policy: none
   cube_id: 5A6899DE456C9CB4E5E92682B734D040
   dossier_id: 27CF6F5B4470E60FF93FB7BBBF10B751
   filters:
     agency_name: W956778879214405A8C7438126319303A
-  is_csv_cached: 0
   viz_keys:
     detail: null
     summary: K52
 acente_ivir_zivir:
+  cache_policy: none
   cube_id: 251EC45442E81DB5F67A8C8BB66D8EDB
   dossier_id: 6D1B67F64A2D55FA78863EA2F9F5A042
   filters:
     agency_name: W581EC6B4F33543B68399C5F366A3406A
-  is_csv_cached: 0
   viz_keys:
     detail: null
     summary: K52
 agency_master_list:
+  cache_policy: none
   cube_id: 81ADF07E4383A687A469849F4CBE9257
   dossier_id: 54E6CD794BD2367F3C463A97D35D90F1
   filters:
     agency_name: null
-  is_csv_cached: 0
   viz_keys:
     detail: null
     summary: K52
 is_ortaklari_listesi:
+  cache_policy: none
   cube_id: 8530CA634A73F32CCA9852888C56087D
   dossier_id: 53FA993D4B3311E17C31CDB9D60A2CC0
   filters:
     agency_name: null
-  is_csv_cached: 0
   viz_keys:
     detail: null
     summary: K52
 kampanya_seyahat_2025:
+  cache_policy: none
   cube_id: 241383414F2ECCE2B72127AE73517244
   dossier_id: 5BC21C6B4F20DE4483807FA14817CF4D
   filters:
     agency_name: WF6C32C2262574A8DACE3F6AF86516427
-  is_csv_cached: 0
   viz_keys:
     detail: null
     summary: WFF5E668DC2AD4EA1B72D48002BE84D3C
 kampanya_yangin_2025:
+  cache_policy: none
   cube_id: 1076A4F2473F243769B9CDA8E3621249
   dossier_id: A6CEF7024ED004189A076982339E3122
   filters:
     agency_name: WBED0CCCE9F9F463B9F75E9002565A7B7
-  is_csv_cached: 0
   viz_keys:
     detail: null
     summary: W41BBD592D247416C8D94378FCA1F6F05
 p10_tekliflerim:
+  cache_policy: daily
   cube_id: EEDCD63E41440AE1B1D6079D73D53D01
   dossier_id: 8FA3541B427391A8F25A90B17EA6EDE3
   filters:
     agency_name: WD32141FFA40C46FD916758966AB9FFE4
-  is_csv_cached: 2
   viz_keys:
     detail: null
     summary: K52
 p1_anlik_uretim:
+  cache_policy: daily
   cube_id: 81ADF07E4383A687A469849F4CBE9257
   dossier_id: 4A756FF546F51702ED3788912196FEC7
   filters:
     agency_name: W91C86AAE987E44B38976A26CD900C60D
-  is_csv_cached: 3
   viz_keys:
     detail: WB8A466188CB74032B92CA7560BEC8391
     summary: K52
 p2_yenileme:
+  cache_policy: daily
   cube_id: 3DDD046243F33C637E0B7A9FCB9DE392
   dossier_id: 31C35B6E46A238849EA597AFD19A9F99
   filters:
     agency_name: W0A79556C5ED84133AB8F7B4B5A718223
-  is_csv_cached: 2
   viz_keys:
     detail: null
     summary: K52
 p3_acente_hedef:
+  cache_policy: daily
   cube_id: AE69CDD54B715C8C8B5DD7A2C5F8B2A3
   dossier_id: 8D5E971449886E8D1F8889B4B432F630
   filters:
     agency_name: W06ABD26BEA9A4954971AD78529970A94
-  is_csv_cached: 2
   viz_keys:
     detail: W8D67A24C582045449A9EDFF9CF1702EF
     summary: K52
 p4_acente_karnesi:
+  cache_policy: daily
   cube_id: 855565324EDC48EAACBB43A5561E2605
   dossier_id: 144D2FFB4A36A867E4E57FA44ACBDD4A
   filters:
     agency_name: WD9C457B6A4C543448A928F5F53431DE3
-  is_csv_cached: 2
   viz_keys:
     detail: W026552489120467DBEA5A57FE958C22B
     summary: K52
 p5_hasar:
+  cache_policy: daily
   cube_id: BBFD36E041C265002034DE8E5BBC1A68
   dossier_id: 0E137F4A4232599C913B4EA45E37D94C
   filters:
     agency_name: W279C4AC4E01A44C2BB525165F04668D6
-  is_csv_cached: 2
   viz_keys:
     detail: WC969545E131443188AD4D772EC0D1715
     summary: W17AC279F3C584CA5830EA4BD2FEB76B6
 p6_segmentasyon:
+  cache_policy: none
   cube_id: 4CB76E5845FD7F6E19E1748BD233EE94
   dossier_id: 95F236DE45D9E0A97D1EBB8F952B9191
   filters:
     agency_name: W422EC03566E3453C8D36FE6884DECB26
-  is_csv_cached: 0
   viz_keys:
     detail: null
     summary: K52
 p6_taslak_segmentasyon:
+  cache_policy: none
   cube_id: 4CB76E5845FD7F6E19E1748BD233EE94
   dossier_id: F2519A3A4B3EE5CA9E340599E3F8E6B3
   filters:
     agency_name: W422EC03566E3453C8D36FE6884DECB26
-  is_csv_cached: 0
   viz_keys:
     detail: null
     summary: K52
 p8_mtd_uretim:
+  cache_policy: daily
   cube_id: F49F50A64491A53D45A4A3B1A8578B03
   dossier_id: 67D5DACC438A45F5898FA084C8E37398
   filters:
     agency_name: W2C43FC6A43224395906F067079A5D900
-  is_csv_cached: 3
   viz_keys:
     detail: W34597DEC36E64E49B254939DD5ECA3F8
     summary: W0598535F7A7F42E2AC7D2C58161C1473
 p8_ytd_uretim:
+  cache_policy: daily
   cube_id: F49F50A64491A53D45A4A3B1A8578B03
   dossier_id: 1E234A414AB87CFD2C89A38D9FBC08D3
   filters:
     agency_name: WFA2AA846D339491098DDD602DFB15E6C
-  is_csv_cached: 3
   viz_keys:
     detail: W34597DEC36E64E49B254939DD5ECA3F8
     summary: WA8F739E86E2C438797CC038E2F7BBB20
 p9_kazanclarim:
+  cache_policy: none
   cube_id: 855565324EDC48EAACBB43A5561E2605
   dossier_id: 5CE6D3E443BFE10160FD9EA94D1BF14E
   filters:
     agency_name: W89C5D4CAA2F4477C9F216CB1BE2B8DE9
-  is_csv_cached: 0
   viz_keys:
     detail: W435E9D9F7E144D838E3079CBC1481FF0
     summary: WF44621A024B0486DA96A9BB5E4031801
 r10_seyahat_kampanya:
+  cache_policy: daily
   cube_id: 251EC45442E81DB5F67A8C8BB66D8EDB
   dossier_id: 2C1A425C48838A00DDD66C9E19FF5507
   filters:
     agency_name: W567CD409AADC4C28839CF553F098871F
-  is_csv_cached: 2
   viz_keys:
     detail: null
     summary: K52
 r12_yangin_kampanya:
+  cache_policy: daily
   cube_id: 251EC45442E81DB5F67A8C8BB66D8EDB
   dossier_id: 6B208DD54A5FD2D7130E6D8CA28C6258
   filters:
     agency_name: W89A0965098F144BB8F49B600E0FDC424
-  is_csv_cached: 2
   viz_keys:
     detail: null
     summary: K52
 r13_hasar_raporu:
+  cache_policy: daily
   cube_id: 251EC45442E81DB5F67A8C8BB66D8EDB
   dossier_id: 1A72F86E4EBF8BEAAD511FA578267F60
   filters:
     agency_name: W30E927DE2A624366ABF3FBF7AA25F4C5
-  is_csv_cached: 2
   viz_keys:
     detail: null
     summary: K52
 r14_muallak_raporu:
+  cache_policy: daily
   cube_id: 6A921E8C4768DEAC7D7F12A0B0905C25
   dossier_id: 01FBA2D548B3ABF833436E8F3AE38662
   filters:
     agency_name: W4BC496D2AEDD4F1D989A8661A4E643F3
-  is_csv_cached: 2
   viz_keys:
     detail: null
     summary: K52
 r15_ihbar_raporu:
+  cache_policy: daily
   cube_id: 6A921E8C4768DEAC7D7F12A0B0905C25
   dossier_id: 6F2E97054855FFF69AC90A805DAE0B69
   filters:
     agency_name: W0AF6D1A8433743A2AEC15F9424BB84B7
-  is_csv_cached: 2
   viz_keys:
     detail: null
     summary: K52
 r16_saglik_hasar_prim:
+  cache_policy: daily
   cube_id: 1E1025904C1D305FD93B5B935B9115F1
   dossier_id: 6579A402442D9081FC16C7AC5639B26F
   filters:
     agency_name: W30E63607CFC84160B9B5B964E8112C22
-  is_csv_cached: 2
   viz_keys:
     detail: null
     summary: K52
 r17_saglik_hasar:
+  cache_policy: daily
   cube_id: 425D0C3647EF5FC957F50EBD43EAFB0F
   dossier_id: FDC1B21D494DFD70BC4F6F943E77F448
   filters:
     agency_name: WD281E6F4A47C426DAEE4AFB79C4DFC49
-  is_csv_cached: 1
   viz_keys:
     detail: null
     summary: K52
 r18_saglik_uretim:
+  cache_policy: none
   cube_id: F6705C07437F05DD5127AB88F3ADE73A
   dossier_id: 606C6E7E4EF9C3E989F5A9A88F72028E
   filters:
     agency_name: W35B2BE32C4884F57B3A58B6DED19B841
-  is_csv_cached: 0
   viz_keys:
     detail: null
     summary: K52
 r18_saglık_uretim:
+  cache_policy: daily
   cube_id: F6705C07437F05DD5127AB88F3ADE73A
   dossier_id: 606C6E7E4EF9C3E989F5A9A88F72028E
   filters:
     agency_name: W35B2BE32C4884F57B3A58B6DED19B841
-  is_csv_cached: 2
   viz_keys:
     detail: null
     summary: K52
 r19_saglik_anket_verisi:
+  cache_policy: none
   cube_id: B33FBD504B1BC67655A462906C29A76F
   dossier_id: 37473AAC4678DAF269D174A583D5DDA5
   filters:
     agency_name: W33AD2C132302406697783D7C2A43C2CF
-  is_csv_cached: 0
   viz_keys:
     detail: null
     summary: K52
 r1_yenileme_raporu:
+  cache_policy: none
   cube_id: 6C5CD1EB412C2604696D7C81E33EA832
   dossier_id: AF41B6F24EA7F57821169DB9AB340739
   filters:
     agency_name: W6E78D98860494944A457BDCBC8EB545A
     police_ay: W428DEFF1A54E49EC8102C5951493060C
     police_yil: W5F93BBCFAF2546318EBFBB330ACE43FE
-  is_csv_cached: 0
   viz_keys:
     detail: null
     summary: K52
 r2_uretim_raporu:
+  cache_policy: none
   cube_id: 6C5CD1EB412C2604696D7C81E33EA832
   dossier_id: 6B3F881F4681F5F2EAAD529EBA23F7BE
   filters:
@@ -273,54 +274,53 @@ r2_uretim_raporu:
     police_yil: WDBA386CB4E2047949EEEF9AC7C4A73AD
     urun_ana_brans_no: W0C5CD12BECF5478EA17BD73C23B77F16
     urun_no: W80D5BCFEBBFB43788B6CD5C1ECCDC18A
-  is_csv_cached: 0
   viz_keys:
     detail: null
     summary: K52
 r3_teklif_raporu:
+  cache_policy: daily
   cube_id: EEDCD63E41440AE1B1D6079D73D53D01
   dossier_id: 173ACAF84EEA077B055195A1BE554DD9
   filters:
     agency_name: W6CC659F13A50405DA8D43B61A164B8AB
     police_ay: WEB4FBA9EE76C4BC4A05AAE87D98EEE68
     police_yil: WB4A0021938B149FF8BAFA21CD8DE2636
-  is_csv_cached: 1
   viz_keys:
     detail: null
     summary: K52
 r4_acente_broker_raporu:
+  cache_policy: daily
   cube_id: F84D95A04B17FB266E6598B768D5AD06
   dossier_id: A597D8654DCA41573EB7BD8D25233506
   filters:
     agency_name: W9F349C89D3FA46F485CCF643F8D60B6D
-  is_csv_cached: 2
   viz_keys:
     detail: null
     summary: K52
 r5_kkr_raporu:
+  cache_policy: daily
   cube_id: 31264DBF473465ECC02D168702D46EB3
   dossier_id: C738C5CD441CA616B34609BF5A7C9B32
   filters:
     agency_name: WCEC646C63C5E4F38BA53D1762CD35A4C
-  is_csv_cached: 1
   viz_keys:
     detail: null
     summary: K52
 r6_acente_ekstre:
+  cache_policy: daily
   cube_id: E4B1F86243BC1D5ACC823095E8B7F35C
   dossier_id: 2DEC1F61471D28593AE1E9B0E4CBEE32
   filters:
     agency_name: W7F1211CB8E2D4078AD90189312452911
-  is_csv_cached: 2
   viz_keys:
     detail: null
     summary: K52
 r7_komisyon_gider_belgesi:
+  cache_policy: daily
   cube_id: FE4F7381422E037BF09D5CABE23757EC
   dossier_id: 8750C9194278C0476F9E8FA0E19B5163
   filters:
     agency_name: WC3A44F9F90BC495FA09B11766867388E
-  is_csv_cached: 2
   viz_keys:
     detail: null
     summary: K52

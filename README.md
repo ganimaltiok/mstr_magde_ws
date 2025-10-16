@@ -1,16 +1,15 @@
 # MSTR Herald API
 
-MicroStrategy Herald is a Flask-based REST API that provides data from MicroStrategy dossiers in a standardized JSON format with pagination support.
+MicroStrategy Herald is a Flask-based REST service that turns MicroStrategy dossiers into clean, paginated JSON responses, optionally backed by Redis caching. The project now focuses on the v3 API and provides tooling to manage cache refreshes from the browser, CLI, or automation jobs.
 
 ## Features
 
-- Connect to MicroStrategy REST API
-- Fetch reports with agency code filters
-- API versioning (v1, v2)
-- Response pagination
-- Docker containerization
-- Response caching
-- Systemd service integration
+- Modern `/api/v3` endpoints with consistent JSON payloads
+- Flexible filtering, pagination, and per-agency data slicing
+- Redis-backed daily cache snapshots with rich metadata
+- Admin console for dossier configuration plus one-click cache refresh
+- Helper HTTP endpoints and CLI scripts for cron-friendly cache refreshes
+- Docker and Systemd deployment recipes
 
 ## Quick Start
 
@@ -19,7 +18,7 @@ MicroStrategy Herald is a Flask-based REST API that provides data from MicroStra
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd mstr_herald
+cd mstr_magde_ws
 
 # Configure environment variables
 cp .env.example .env
@@ -34,7 +33,7 @@ docker-compose up -d
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd mstr_herald
+cd mstr_magde_ws
 
 # Create and activate virtual environment
 python -m venv venv
@@ -52,88 +51,107 @@ cd src
 python app.py
 ```
 
-## API Endpoints
+## Configuration
 
-### Health Check
+All dossier definitions live in `src/config/dossiers.yaml`. Key fields:
+
+- `cube_id`, `dossier_id`: MicroStrategy identifiers.
+- `viz_keys`: Maps logical info types (e.g. `summary`, `detail`) to dossier visualization keys. Only non-null entries are cached.
+- `filters`: Dictionary of filter keys. Specify `agency_name` when the dossier requires an agency selection.
+- `cache_policy`: Either `none` (always live) or `daily` (cacheable).
+
+The admin UI at `/admin/edit` lets you edit these values, view the latest cache metadata, and trigger manual refreshes.
+
+## API (v3)
+
+### GET `/api/v3/report/<report_name>/agency/<agency_code>`
+
+Fetch report data filtered by agency.
+
+| Query parameter | Default | Description |
+|-----------------|---------|-------------|
+| `info_type`     | `summary` | Must exist in the dossier's `viz_keys`. |
+| `page`          | `1`     | 1-based page index. |
+| `page_size`     | `50`    | Page length (integer > 0). |
+| Other keys      | –       | Additional query parameters are forwarded as dossier filters. |
+
+Response highlights: `data`, pagination metadata, `data_refresh_time`, and cache details (`is_cached`, `cache_hit`, `cache_policy`).
+
+### GET `/api/v3/report/<report_name>`
+
+Fetch report data without agency filtering. Works only for dossiers that do **not** require `agency_name`. Supports the same query parameters as the agency endpoint.
+
+### GET `/api/v3/reports`
+
+List configured dossiers with their cache policy, available filters, and whether agency filtering is required.
+
+## Cache Helpers
+
+### HTTP endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/refresh` | POST/GET | Refreshes all reports with `cache_policy = daily`. Returns a summary with refreshed metadata, skipped items, and errors. |
+| `/refresh/<report_name>` | POST/GET | Refresh a single report. Response includes the refreshed metadata (`meta`) or error details. |
+| `/refresh/meta/<report_name>` | GET | Retrieve cached metadata without triggering a refresh. Useful for diagnostics. |
+
+Returned metadata includes the `refreshed_at` timestamp and per `info_type` row/column counts plus cache keys.
+
+### Admin console
+
+Visit `/admin/edit` to:
+
+- Edit dossier metadata (`cube_id`, `viz_keys`, `cache_policy`, etc.).
+- Review the latest cache metadata per report (last refresh time, row counts).
+- Trigger one-click cache refreshes per report or refresh all daily caches.
+
+### CLI / scheduled jobs
 
 ```
-GET /api/v1/ping
+# Refresh every cache marked as daily (ideal for cron)
+cd src
+python -m cache_refresher.cache_refresher
+
+# One-off run with logs
+python src/cache_monitor.py
 ```
 
-Returns `{"status": "ok"}` if the service is running.
+Both commands return the same metadata summary as the HTTP endpoints.
 
-### Get Report Data (v1)
+## Pagination & Filtering Tips
 
-```
-GET /api/v1/report/{report_name}/agency/{agency_code}
-```
-
-Parameters:
-- `report_name`: Report identifier from dossiers.yaml
-- `agency_code`: Agency filter code
-- `info_type` (query): Type of information to retrieve (default: "summary")
-- `page` (query): Page number (default: 1)
-- `page_size` (query): Items per page (default: 100)
-
-### Get Report Data (v2)
-
-```
-GET /api/v2/report/{report_name}/agency/{agency_code}
-```
-
-Parameters: Same as v1.
-
-## Available Reports
-
-The following reports are configured in `src/config/dossiers.yaml`:
-
-- p1_anlik_uretim
-- p2_yenileme
-- p3_acente_hedef
-- p4_acente_karnesi
-- p5_hasar
-- p6_segmentasyon
-- p8_ytd_uretim
-- p8_mtd_uretim
-- p9_kazançlarım
-- p10_tekliflerim
-- r1_yenileme_raporu
-- r2_uretim_raporu
-- r3_teklif_raporu
+- `page` and `page_size` control server-side paging; the API returns `total_rows` and `total_pages` so you can build clients easily.
+- Any extra query parameters (e.g. `?product=Auto&region=EMEA`) are passed through to the dossier filters by name.
+- `info_type` values correspond to the keys in `viz_keys` for the dossier.
 
 ## Development
 
-### Project Structure
-
 ```
 .
-├── docker-compose.yml    # Docker Compose configuration
-├── Dockerfile            # Docker build configuration
-├── mstr_herald.service   # Systemd service file
-├── README.md             # This documentation
-├── requirements.txt      # Python dependencies
+├── docker-compose.yml
+├── Dockerfile
+├── requirements.txt
 └── src
-    ├── app.py            # Main Flask application
+    ├── app.py                     # Flask app factory & blueprint registration
+    ├── api_v3.py                  # Primary REST endpoints
+    ├── cache_routes.py            # /refresh helpers
+    ├── cache_monitor.py           # CLI helper for cron
+    ├── cache_refresher/
+    │   ├── cache_refresher.py     # Wrapper around full report refresh
+    │   └── full_report_refresher.py  # Redis snapshot + metadata logic
+    ├── configurator.py            # Admin UI for dossiers + cache actions
     ├── config
-    │   └── dossiers.yaml # MicroStrategy dossier configurations
-    └── mstr_herald
-        ├── connection.py # MicroStrategy connection management
-        ├── fetcher.py    # Data fetching logic (v1)
-        ├── fetcher_v2.py # Enhanced data fetching (v2)
-        ├── __init__.py
-        ├── selectors.py  # Utility for listing filter keys
-        └── utils.py      # General utility functions
+    │   └── dossiers.yaml          # Dossier definitions
+    └── mstr_herald                # MicroStrategy connection + utility code
 ```
 
-### Environment Variables
+## Environment Variables
 
-Create a `.env` file with the following variables:
+Create a `.env` file at the project root with:
 
 ```
 # Flask
 PORT=8000
-CACHE_TYPE=SimpleCache
-CACHE_TIMEOUT=60
 
 # MicroStrategy
 MSTR_URL_API=http://your-mstr-server:8080/MicroStrategyLibrary/api
@@ -145,35 +163,8 @@ MSTR_PROJECT=your_project
 
 ## Deployment
 
-### Docker Deployment
-
-```bash
-docker-compose up -d
-```
-
-### Systemd Service Installation
-
-```bash
-# Copy service file
-sudo cp mstr_herald.service /etc/systemd/system/
-
-# Create mstrapp user (if not exists)
-sudo useradd -r mstrapp
-
-# Set up application directory
-sudo mkdir -p /opt/mstr_herald
-sudo cp -r . /opt/mstr_herald
-sudo chown -R mstrapp:mstrapp /opt/mstr_herald
-
-# Create virtual environment
-sudo -u mstrapp python -m venv /opt/mstr_herald/venv
-sudo -u mstrapp /opt/mstr_herald/venv/bin/pip install -r /opt/mstr_herald/requirements.txt
-
-# Start and enable service
-sudo systemctl daemon-reload
-sudo systemctl start mstr_herald
-sudo systemctl enable mstr_herald
-```
+- `docker-compose up -d` spins up the API alongside Redis.
+- A sample `mstr_herald.service` unit is provided for Systemd-based deployments.
 
 ## License
 

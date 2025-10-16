@@ -12,6 +12,8 @@ from mstr_herald.utils import (
     _to_camel_no_tr,
     is_lower_camel_case,
     _stringify_dataframe,
+    resolve_cache_policy,
+    CACHE_POLICY_DAILY,
 )
 from mstr_herald.fetcher_v2 import fetch_report_csv
 from mstr_herald.connection import create_connection
@@ -118,43 +120,26 @@ def get_cached_report(report_name, agency_code):
         if info_type not in cfg.get("viz_keys", {}):
             return jsonify({"error": f"Visualization type '{info_type}' is not defined for this report."}), 400
 
-        cache_flag = cfg.get("is_csv_cached", 0)
-        is_cached = cache_flag in (1, 3)
+        cache_policy = resolve_cache_policy(cfg)
+        use_cache = cache_policy == CACHE_POLICY_DAILY
+        cache_key = f"{report_name}:all:{info_type}" if use_cache else None
+        cache_hit = False
         df = None
 
-        logger.info(f"Fetching report '{report_name}' ({info_type}) for agency '{agency_code}' - Cached: {is_cached}")
+        logger.info(
+            f"Fetching report '{report_name}' ({info_type}) for agency '{agency_code}' "
+            f"- cache policy: {cache_policy}"
+        )
 
-        if cache_flag == 1:
-            cache_key = f"{report_name}:{agency_code}"
+        if use_cache and cache_key:
             df = get_cached_data(cache_key)
             if df is not None:
-                logger.info(f"Loaded {cache_key} from cache.")
-            else:
-                logger.info(f"[CACHE MISS] {cache_key} not found in Redis.")
-        elif cache_flag == 3:
-            cache_key = f"{report_name}:all:{info_type}"
-            df = get_cached_data(cache_key)
-            if df is not None:
+                cache_hit = True
                 logger.info(f"Loaded {cache_key} from cache.")
                 df = filter_df_by_agency(df, agency_code)
-                filters["agency_name"] = agency_code  # 💡 bunu burada manuel ekle
+                filters["agency_name"] = agency_code
             else:
                 logger.info(f"[CACHE MISS] {cache_key} not found in Redis.")
-                try:
-                    conn = create_connection()
-                except Exception as e:
-                    logger.error(f"Failed to create MSTR connection: {e}")
-                    return jsonify({"error": "MicroStrategy connection not available"}), 503
-                try:
-                    filters["agency_name"] = agency_code
-                    df = fetch_fresh_data(conn, report_name, filters, info_type)
-                except Exception as e:
-                    return jsonify({"error": f"Failed to fetch report: {str(e)}"}), 500
-                finally:
-                    try:
-                        conn.close()
-                    except:
-                        pass
 
         if df is None:
             try:
@@ -200,7 +185,9 @@ def get_cached_report(report_name, agency_code):
             "total_rows": total_rows,
             "total_pages": total_pages,
             "data_refresh_time": cube_time,
-            "is_cached": is_cached
+            "is_cached": use_cache,
+            "cache_hit": cache_hit,
+            "cache_policy": cache_policy,
         }
 
         return Response(json.dumps(payload, ensure_ascii=False, indent=2), content_type="application/json")
@@ -223,51 +210,68 @@ def get_report_without_agency(report_name):
                 "usage": f"Use /api/v3/report/{report_name}/agency/<agency_code>"
             }), 400
 
-        is_cached = cfg.get("is_csv_cached") == 1
-
         filters = request.args.to_dict()
+        info_type = filters.pop("info_type", "summary").lower()
         page = int(filters.pop("page", 1))
         page_size = int(filters.pop("page_size", 50))
 
-        logger.info(f"Fetching report '{report_name}' without agency filter - Cached: {is_cached}")
+        if info_type not in cfg.get("viz_keys", {}):
+            return jsonify({"error": f"Visualization type '{info_type}' is not defined for this report."}), 400
 
-        if is_cached:
-            return jsonify({
-                "error": "Cached reports without agency filtering not implemented yet",
-                "suggestion": "Please use non-cached version or implement agency-agnostic caching"
-            }), 501
+        cache_policy = resolve_cache_policy(cfg)
+        use_cache = cache_policy == CACHE_POLICY_DAILY
+        cache_key = f"{report_name}:all:{info_type}" if use_cache else None
+        cache_hit = False
+        df = None
 
-        try:
-            conn = create_connection()
-        except Exception as e:
-            logger.error(f"Failed to create MSTR connection: {e}")
-            return jsonify({"error": "MicroStrategy connection not available"}), 503
-        try:
-            df = fetch_report_csv(conn, report_name, filters)
-            df, cube_time = process_dataframe(df, filters)
-            paginated, total_rows, total_pages = paginate_data(df, page, page_size)
+        logger.info(
+            f"Fetching report '{report_name}' without agency filter "
+            f"- cache policy: {cache_policy}"
+        )
 
-            payload = {
-                "data": json.loads(safe_json_serialize(paginated)),
-                "report": report_name,
-                "page": page,
-                "page_size": page_size,
-                "total_rows": total_rows,
-                "total_pages": total_pages,
-                "data_refresh_time": cube_time,
-                "is_cached": is_cached
-            }
+        if use_cache and cache_key:
+            df = get_cached_data(cache_key)
+            if df is not None:
+                cache_hit = True
+                logger.info(f"Loaded {cache_key} from cache.")
+            else:
+                logger.info(f"[CACHE MISS] {cache_key} not found in Redis.")
 
-            return Response(json.dumps(payload, ensure_ascii=False, indent=2), content_type="application/json")
-
-        except Exception as e:
-            logger.error(f"Error fetching report '{report_name}': {e}")
-            return jsonify({"error": f"Failed to fetch report: {str(e)}"}), 500
-        finally:
+        if df is None:
             try:
-                conn.close()
-            except:
-                pass
+                conn = create_connection()
+            except Exception as e:
+                logger.error(f"Failed to create MSTR connection: {e}")
+                return jsonify({"error": "MicroStrategy connection not available"}), 503
+            try:
+                df = fetch_report_csv(conn, report_name, filters, info_type)
+            except Exception as e:
+                logger.error(f"Error fetching report '{report_name}': {e}")
+                return jsonify({"error": f"Failed to fetch report: {str(e)}"}), 500
+            finally:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
+        df, cube_time = process_dataframe(df, filters)
+        paginated, total_rows, total_pages = paginate_data(df, page, page_size)
+
+        payload = {
+            "data": json.loads(safe_json_serialize(paginated)),
+            "report": report_name,
+            "info_type": info_type,
+            "page": page,
+            "page_size": page_size,
+            "total_rows": total_rows,
+            "total_pages": total_pages,
+            "data_refresh_time": cube_time,
+            "is_cached": use_cache,
+            "cache_hit": cache_hit,
+            "cache_policy": cache_policy,
+        }
+
+        return Response(json.dumps(payload, ensure_ascii=False, indent=2), content_type="application/json")
 
     except Exception as e:
         logger.error(f"Unexpected error in get_report_without_agency: {e}", exc_info=True)
@@ -280,9 +284,11 @@ def list_reports():
         reports = []
 
         for report_name, cfg in config.items():
+            policy = resolve_cache_policy(cfg)
             reports.append({
                 "name": report_name,
-                "is_cached": cfg.get("is_csv_cached") in (1, 3),
+                "cache_policy": policy,
+                "is_cached": policy == CACHE_POLICY_DAILY,
                 "requires_agency": "agency_name" in cfg.get("filters", {}),
                 "available_filters": list(cfg.get("filters", {}).keys())
             })

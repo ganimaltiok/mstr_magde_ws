@@ -10,6 +10,10 @@ import yaml
 BASE_DIR = os.path.dirname(__file__)
 CONFIG_PATH = os.path.join(BASE_DIR, "config", "dossiers.yaml")
 
+CACHE_POLICY_NONE = "none"
+CACHE_POLICY_DAILY = "daily"
+
+
 def load_config():
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     config_path = os.path.join(base_dir, "config", "dossiers.yaml")
@@ -27,6 +31,32 @@ def save_config(config: dict) -> None:
     config_path = os.path.join(base_dir, "config", "dossiers.yaml")
     with open(config_path, "w", encoding="utf-8") as f:
         yaml.safe_dump(config, f, allow_unicode=True, default_flow_style=False)
+
+
+def resolve_cache_policy(cfg: dict) -> str:
+    """
+    Determine the cache policy for a given report configuration.
+
+    Accepts legacy integer-based ``is_csv_cached`` flags and maps them to the
+    simplified ``none`` / ``daily`` options while prioritising the explicit
+    ``cache_policy`` field when present.
+    """
+    if not cfg:
+        return CACHE_POLICY_NONE
+
+    policy = (cfg.get("cache_policy") or "").strip().lower()
+    if policy in {CACHE_POLICY_NONE, CACHE_POLICY_DAILY}:
+        return policy
+
+    legacy_flag = cfg.get("is_csv_cached")
+    try:
+        legacy_flag = int(legacy_flag)
+    except (TypeError, ValueError):
+        legacy_flag = 0
+
+    if legacy_flag > 0:
+        return CACHE_POLICY_DAILY
+    return CACHE_POLICY_NONE
 
 
 def try_parse_date(s):

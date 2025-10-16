@@ -3,16 +3,12 @@ from flask import Flask
 from dotenv import load_dotenv
 import os
 import logging
-from flask_caching import Cache
 from mstr_herald.connection import create_connection
 from mstr_herald.error_handlers import register_error_handlers
-from api_v1 import register_v1_blueprint
-from api_v2 import register_v2_blueprint
 from api_v3 import api_v3  # v3 zaten blueprint olarak geliyor
 from admin import admin
 from configurator import configure_bp
-import threading
-from cache_refresher.cache_refresher import monitor_cube_refresh_changes
+from cache_routes import cache_bp
 
 # Setup logging
 logging.basicConfig(
@@ -33,8 +29,6 @@ def create_app():
         "CACHE_TYPE": os.getenv("CACHE_TYPE", "SimpleCache"),
         "CACHE_DEFAULT_TIMEOUT": int(os.getenv("CACHE_TIMEOUT", 60))
     })
-    cache = Cache(app)
-
     # Register error handlers
     register_error_handlers(app)
 
@@ -47,11 +41,10 @@ def create_app():
         mstr_conn = None
 
     # Register blueprints
-    register_v1_blueprint(app, cache, mstr_conn)
-    register_v2_blueprint(app, mstr_conn)
     app.register_blueprint(api_v3, url_prefix="/api/v3")
     app.register_blueprint(admin)
     app.register_blueprint(configure_bp)
+    app.register_blueprint(cache_bp)
 
     return app
 

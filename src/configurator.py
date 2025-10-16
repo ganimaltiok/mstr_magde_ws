@@ -1,14 +1,44 @@
 from __future__ import annotations
 
 import html
-from typing import Any, Dict
+from typing import Any, Dict, Optional
+import json
 
 import yaml
 from flask import Blueprint, Response, jsonify, request
 
 from mstr_herald.connection import create_connection
 from mstr_herald.dossier_inspector import discover_dossier
-from mstr_herald.utils import load_config, save_config
+from mstr_herald.utils import (
+    load_config,
+    save_config,
+    resolve_cache_policy,
+    CACHE_POLICY_NONE,
+    CACHE_POLICY_DAILY,
+)
+from cache_refresher.full_report_refresher import get_report_cache_meta
+
+
+def _format_cache_status(meta: Optional[Dict[str, Any]]) -> str:
+    if not meta:
+        return "Never cached"
+
+    refreshed_at = meta.get("refreshed_at") or "Unknown"
+    info_types = meta.get("info_types") or {}
+    parts = []
+    for info_type, details in info_types.items():
+        rows = details.get("rows")
+        cols = details.get("columns") or []
+        row_txt = f"{rows} rows" if rows is not None else "rows: ?"
+        col_txt = f"{len(cols)} cols" if cols else ""
+        fragment = f"{info_type}: {row_txt}"
+        if col_txt:
+            fragment = f"{fragment} / {col_txt}"
+        parts.append(fragment)
+
+    info_summary = "; ".join(parts) if parts else "no datasets cached"
+    suffix = " (partial)" if meta.get("partial") else ""
+    return f"{refreshed_at} - {info_summary}{suffix}"
 
 configure_bp = Blueprint("configure", __name__)
 
@@ -23,11 +53,18 @@ def _generate_edit_rows(config: Dict[str, Any]) -> str:
         def esc(value: Any) -> str:
             return html.escape("" if value is None else str(value), quote=True)
 
+        current_policy = resolve_cache_policy(cfg)
         options = []
-        current_flag = int(cfg.get("is_csv_cached", 0) or 0)
-        for option in range(4):
-            selected = "selected" if current_flag == option else ""
-            options.append(f"<option value='{option}' {selected}>{option}</option>")
+        for value, label in (
+            (CACHE_POLICY_NONE, "No Cache"),
+            (CACHE_POLICY_DAILY, "Daily (refresh via job)"),
+        ):
+            selected = "selected" if current_policy == value else ""
+            options.append(f"<option value='{value}' {selected}>{html.escape(label)}</option>")
+
+        meta = get_report_cache_meta(report_name)
+        status_text = _format_cache_status(meta)
+        meta_json = html.escape(json.dumps(meta) if meta is not None else "", quote=True)
 
         rows.append(
             "<tr>"
@@ -38,6 +75,12 @@ def _generate_edit_rows(config: Dict[str, Any]) -> str:
             f"<td><input value='{esc(filters.get('agency_name'))}'></td>"
             f"<td><input value='{esc(viz_keys.get('summary'))}'></td>"
             f"<td><input value='{esc(viz_keys.get('detail'))}'></td>"
+            f"<td>"
+            f"  <div class='cache-status' data-report='{esc(report_name)}' data-meta='{meta_json}'>"
+            f"    <div class='status-text'>{html.escape(status_text)}</div>"
+            f"    <button type='button' class='refresh-btn'>Refresh Cache</button>"
+            f"  </div>"
+            f"</td>"
             "</tr>"
         )
     return "\n".join(rows)
@@ -56,13 +99,151 @@ def edit_dossiers() -> Response:
       <style>
         body {{ font-family: sans-serif; padding: 20px; }}
         table {{ border-collapse: collapse; width: 100%; }}
-        th, td {{ border: 1px solid #ccc; padding: 8px; }}
+        th, td {{ border: 1px solid #ccc; padding: 8px; vertical-align: top; }}
         th {{ background: #f0f0f0; }}
         input, select {{ width: 100%; box-sizing: border-box; }}
         button {{ margin-top: 10px; padding: 6px 12px; }}
+        .cache-status button {{ margin-top: 4px; }}
         #msg {{ margin-top:10px; color: green; }}
+        .cache-status {{ display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }}
+        .cache-status .status-text {{ font-size: 0.85em; color: #555; }}
+        .actions {{ margin-top: 12px; display: flex; gap: 10px; }}
       </style>
       <script>
+        const CACHE_POLICY_NONE = "{CACHE_POLICY_NONE}";
+        const CACHE_POLICY_DAILY = "{CACHE_POLICY_DAILY}";
+
+        function showMessage(text, color) {{
+          const msg = document.getElementById('msg');
+          if (!msg) return;
+          if (color) {{
+            msg.style.color = color;
+          }}
+          msg.textContent = text;
+        }}
+
+        function formatMeta(meta) {{
+          if (!meta) {{
+            return "Never cached";
+          }}
+          const timestamp = meta.refreshed_at || "Unknown";
+          const partial = meta.partial ? " (partial)" : "";
+          const info = meta.info_types || {{}};
+          const segments = [];
+          for (const key in info) {{
+            if (!Object.prototype.hasOwnProperty.call(info, key)) continue;
+            const details = info[key] || {{}};
+            const rows = details.rows !== undefined && details.rows !== null ? details.rows : "?";
+            const columns = Array.isArray(details.columns) ? details.columns.length : 0;
+            const columnText = columns ? ` / ${{columns}} cols` : "";
+            segments.push(`${{key}}: ${{rows}} rows${{columnText}}`);
+          }}
+          const infoText = segments.length ? segments.join("; ") : "no datasets cached";
+          return `${{timestamp}} - ${{infoText}}${{partial}}`;
+        }}
+
+        function updateStatusBox(statusBox, meta, reportName) {{
+          if (!statusBox) return;
+          if (reportName) {{
+            statusBox.dataset.report = reportName;
+          }}
+          if (meta) {{
+            try {{
+              statusBox.dataset.meta = JSON.stringify(meta);
+            }} catch (err) {{
+              statusBox.dataset.meta = "";
+            }}
+          }} else {{
+            statusBox.dataset.meta = "";
+          }}
+          const statusTextEl = statusBox.querySelector('.status-text');
+          if (statusTextEl) {{
+            statusTextEl.textContent = formatMeta(meta);
+          }}
+        }}
+
+        async function refreshReport(reportName, button) {{
+          const statusBox = button.closest('.cache-status');
+          const statusTextEl = statusBox ? statusBox.querySelector('.status-text') : null;
+          const originalLabel = button.textContent;
+          button.disabled = true;
+          button.textContent = "Refreshing...";
+          if (statusTextEl) {{
+            statusTextEl.textContent = `Refreshing ${reportName}...`;
+          }}
+          try {{
+            const response = await fetch(`/refresh/${{encodeURIComponent(reportName)}}`, {{
+              method: 'POST'
+            }});
+            const json = await response.json();
+            if (response.ok && json.meta) {{
+              updateStatusBox(statusBox, json.meta, reportName);
+              showMessage(`Refreshed cache for ${reportName}.`, "green");
+            }} else if (json.status === "skipped") {{
+              const reason = json.reason || `Refresh skipped for ${reportName}.`;
+              showMessage(reason, "orange");
+              if (statusTextEl) statusTextEl.textContent = reason;
+            }} else if (json.status === "error") {{
+              const details = Array.isArray(json.errors) ? json.errors.join("; ") : (json.errors || "Refresh failed.");
+              showMessage(details, "red");
+              if (statusTextEl) statusTextEl.textContent = details;
+            }} else {{
+              const fallback = json.error || json.reason || "Refresh failed.";
+              showMessage(fallback, "red");
+              if (statusTextEl) statusTextEl.textContent = fallback;
+            }}
+          }} catch (err) {{
+            showMessage(`Error refreshing ${reportName}: ${err}`, "red");
+          }} finally {{
+            button.disabled = false;
+            button.textContent = originalLabel;
+          }}
+        }}
+
+        function cssEscape(value) {{
+          if (window.CSS && typeof window.CSS.escape === "function") {{
+            return window.CSS.escape(value);
+          }}
+          return String(value).replace(/([ #.;?+*~':"!^$\\[\\]()=>|/@])/g, '\\\\$1');
+        }}
+
+        async function refreshAll(button) {{
+          const originalLabel = button.textContent;
+          button.disabled = true;
+          button.textContent = "Refreshing...";
+          showMessage("Refreshing all daily caches...", "black");
+          try {{
+            const response = await fetch('/refresh', {{ method: 'POST' }});
+            const json = await response.json();
+            if (response.ok) {{
+              const refreshed = json.refreshed || {{}};
+              Object.keys(refreshed).forEach(name => {{
+                const selector = `.cache-status[data-report=\"${{cssEscape(name)}}\"]`;
+                const statusBox = document.querySelector(selector);
+                if (statusBox) {{
+                  updateStatusBox(statusBox, refreshed[name], name);
+                }}
+              }});
+
+              const refreshedCount = Object.keys(refreshed).length;
+              const errorKeys = json.errors ? Object.keys(json.errors) : [];
+              if (errorKeys.length) {{
+                showMessage(`Refreshed ${{refreshedCount}} caches. Errors: ${{errorKeys.join(", ")}}`, "orange");
+              }} else {{
+                showMessage(`Refreshed ${{refreshedCount}} caches.`, "green");
+              }}
+            }} else {{
+              const fallback = json.error || json.reason || "Refresh failed.";
+              showMessage(fallback, "red");
+            }}
+          }} catch (err) {{
+            showMessage(`Error refreshing caches: ${err}`, "red");
+          }} finally {{
+            button.disabled = false;
+            button.textContent = originalLabel;
+          }}
+        }}
+
         function saveTable() {{
           const rows = document.querySelectorAll('tbody tr');
           const payload = {{}};
@@ -73,7 +254,7 @@ def edit_dossiers() -> Response:
             payload[reportName] = {{
               cube_id: cells[1].value.trim() || null,
               dossier_id: cells[2].value.trim() || null,
-              is_csv_cached: parseInt(cells[3].value, 10) || 0,
+              cache_policy: cells[3].value || CACHE_POLICY_NONE,
               filters: {{ agency_name: cells[4].value.trim() || null }},
               viz_keys: {{
                 summary: cells[5].value.trim() || null,
@@ -88,19 +269,14 @@ def edit_dossiers() -> Response:
             body: JSON.stringify(payload)
           }}).then(resp => resp.json())
             .then(json => {{
-              const msg = document.getElementById('msg');
               if (json.status === 'ok') {{
-                msg.style.color = 'green';
-                msg.textContent = 'Saved!';
+                showMessage('Saved!', 'green');
               }} else {{
-                msg.style.color = 'red';
-                msg.textContent = 'Error: ' + (json.error || 'unknown error');
+                showMessage('Error: ' + (json.error || 'unknown error'), 'red');
               }}
             }})
             .catch(err => {{
-              const msg = document.getElementById('msg');
-              msg.style.color = 'red';
-              msg.textContent = 'Error: ' + err;
+              showMessage('Error: ' + err, 'red');
             }});
         }}
 
@@ -112,18 +288,58 @@ def edit_dossiers() -> Response:
               <td><input></td>
               <td>
                 <select>
-                  <option value='0'>0</option>
-                  <option value='1'>1</option>
-                  <option value='2'>2</option>
-                  <option value='3'>3</option>
+                  <option value='{CACHE_POLICY_NONE}' selected>No Cache</option>
+                  <option value='{CACHE_POLICY_DAILY}'>Daily (refresh via job)</option>
                 </select>
               </td>
               <td><input></td>
               <td><input></td>
               <td><input></td>
+              <td>
+                <div class="cache-status" data-report="">
+                  <div class="status-text">Never cached</div>
+                  <button type="button" class="refresh-btn">Refresh Cache</button>
+                </div>
+              </td>
             </tr>`;
           document.querySelector('tbody').insertAdjacentHTML('beforeend', template);
         }}
+
+        document.addEventListener('click', (event) => {{
+          const btn = event.target.closest('.refresh-btn');
+          if (!btn) return;
+          const statusBox = btn.closest('.cache-status');
+          const row = btn.closest('tr');
+          const input = row ? row.querySelector('td:first-child input') : null;
+          const datasetName = statusBox && statusBox.dataset.report ? statusBox.dataset.report.trim() : "";
+          const inputName = input ? input.value.trim() : "";
+          const reportName = datasetName || inputName;
+          if (!reportName) {{
+            showMessage("Please specify a report name before refreshing.", "red");
+            return;
+          }}
+          refreshReport(reportName, btn);
+        }});
+
+        document.addEventListener('DOMContentLoaded', () => {{
+          document.querySelectorAll('.cache-status').forEach(statusBox => {{
+            const metaStr = statusBox.dataset.meta || "";
+            let meta = null;
+            if (metaStr) {{
+              try {{
+                meta = JSON.parse(metaStr);
+              }} catch (err) {{
+                meta = null;
+              }}
+            }}
+            updateStatusBox(statusBox, meta, statusBox.dataset.report || "");
+          }});
+
+          const refreshAllBtn = document.getElementById('refresh-all-btn');
+          if (refreshAllBtn) {{
+            refreshAllBtn.addEventListener('click', () => refreshAll(refreshAllBtn));
+          }}
+        }});
       </script>
     </head>
     <body>
@@ -134,18 +350,22 @@ def edit_dossiers() -> Response:
             <th>Report Name</th>
             <th>Cube ID</th>
             <th>Dossier ID</th>
-            <th>is_csv_cached</th>
+            <th>cache_policy</th>
             <th>Agency Filter Key</th>
             <th>Summary Viz Key</th>
             <th>Detail Viz Key</th>
+            <th>Cache Status</th>
           </tr>
         </thead>
         <tbody>
           {table_rows}
         </tbody>
       </table>
-      <button onclick="addRow()">Add Row</button>
-      <button onclick="saveTable()">Save</button>
+      <div class="actions">
+        <button type="button" onclick="addRow()">Add Row</button>
+        <button type="button" onclick="saveTable()">Save</button>
+        <button type="button" id="refresh-all-btn">Refresh All Daily Caches</button>
+      </div>
       <div id="msg"></div>
     </body>
     </html>
@@ -159,8 +379,20 @@ def save_dossiers():
     if not isinstance(payload, dict):
         return jsonify({"status": "error", "error": "Invalid payload"}), 400
 
+    normalised: Dict[str, Any] = {}
+    for report, cfg in payload.items():
+        if not isinstance(cfg, dict):
+            continue
+        policy = (cfg.get("cache_policy") or CACHE_POLICY_NONE).strip().lower()
+        if policy not in {CACHE_POLICY_NONE, CACHE_POLICY_DAILY}:
+            policy = CACHE_POLICY_NONE
+        normalised[report] = {
+            **cfg,
+            "cache_policy": policy,
+        }
+
     try:
-        save_config(payload)
+        save_config(normalised)
     except Exception as exc:
         return jsonify({"status": "error", "error": str(exc)}), 500
 
@@ -293,12 +525,10 @@ def view_config() -> Response:
           <label>Summary Viz Key:</label><input name='viz_summary'>
           <label>Detail Viz Key:</label><input name='viz_detail'>
           <label>Agency Filter Key (acente_kodu):</label><input name='filter_agency_name'>
-          <label>is_csv_cached:</label>
-          <select name='is_csv_cached'>
-            <option value='0'>0</option>
-            <option value='1'>1</option>
-            <option value='2'>2</option>
-            <option value='3'>3</option>
+          <label>Cache Policy:</label>
+          <select name='cache_policy'>
+            <option value='{CACHE_POLICY_NONE}'>No Cache</option>
+            <option value='{CACHE_POLICY_DAILY}'>Daily (refresh via job)</option>
           </select>
           <button type='submit'>Kaydet</button>
         </form>
@@ -325,7 +555,9 @@ def add_or_update_config():
     report_name = data.get("report_name")
     dossier_id = data.get("dossier_id")
     cube_id = data.get("cube_id")
-    is_csv_cached = int(data.get("is_csv_cached", 0))
+    cache_policy = (data.get("cache_policy") or CACHE_POLICY_NONE).lower().strip()
+    if cache_policy not in {CACHE_POLICY_NONE, CACHE_POLICY_DAILY}:
+        cache_policy = CACHE_POLICY_NONE
 
     if not all([report_name, dossier_id, cube_id]):
         return jsonify({"error": "report_name, dossier_id and cube_id are required"}), 400
@@ -337,7 +569,7 @@ def add_or_update_config():
     new_entry = {
         "cube_id": cube_id,
         "dossier_id": dossier_id,
-        "is_csv_cached": is_csv_cached,
+        "cache_policy": cache_policy,
         "filters": {
             "agency_name": filter_agency
         },
