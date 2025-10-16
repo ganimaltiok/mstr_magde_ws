@@ -1,0 +1,8 @@
+# gereksiz dosyalarý imaj dýþýnda tut
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+.env         # üretimde gizli bilgileri build sýrasýnda kopyalamayacaðýz
+.git/

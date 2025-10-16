@@ -1,0 +1,4 @@
+2025-06-17 07:14:01 - Main refresh_cache.log cleared.
+2025-06-17 07:14:01 - Old detailed logs (>7 days) deleted from refresh_logs.
+2025-06-19 07:14:01 - Main refresh_cache.log cleared.
+2025-06-19 07:14:01 - Old detailed logs (>7 days) deleted from refresh_logs.

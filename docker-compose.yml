@@ -1,0 +1,71 @@
+services:
+  flask-api:
+    build: .
+    container_name: flask-api
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REFRESH_LOG_PATH=/app/src/refresh_cache.log
+    volumes:
+      - ./src/refresh_cache.log:/app/src/refresh_cache.log
+      - ./src/config/dossiers.yaml:/app/src/config/dossiers.yaml
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  refresher:
+    build: .
+    container_name: refresher
+    command: python cache_refresher/cache_refresher.py
+    depends_on:
+      - redis
+      - flask-api
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - ./src/cache_refresher/refresh_logs:/app/src/cache_refresher/refresh_logs
+      - ./src/refresh_cache.log:/app/src/refresh_cache.log
+      - ./src/config/dossiers.yaml:/app/src/config/dossiers.yaml
+    restart: "no"
+
+  monitor:
+    build: .
+    container_name: cube-monitor
+    command: python cache_monitor.py
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    restart: always
+    volumes:
+      - ./src/refresh_cache.log:/app/src/refresh_cache.log
+      - ./src/cache_refresher/refresh_logs:/app/src/cache_refresher/refresh_logs
+      - ./src/config/dossiers.yaml:/app/src/config/dossiers.yaml
+
+  full-refresher:
+    build: .
+    container_name: full-refresher
+    command: python full_report_service.py
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    restart: always
+    volumes:
+      - ./src/refresh_cache.log:/app/src/refresh_cache.log
+      - ./src/config/dossiers.yaml:/app/src/config/dossiers.yaml
+
+volumes:
+  redis_data:

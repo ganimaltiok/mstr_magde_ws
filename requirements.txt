@@ -1,0 +1,11 @@
+flask
+flask-caching
+flask-swagger-ui
+gunicorn
+python-dotenv
+requests
+redis
+pandas
+pyyaml
+mstrio-py
+openpyxl
