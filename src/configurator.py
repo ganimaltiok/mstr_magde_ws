@@ -3,6 +3,7 @@ from __future__ import annotations
 import html
 from typing import Any, Dict, Optional
 import json
+import logging
 
 import yaml
 from flask import Blueprint, Response, jsonify, request
@@ -17,6 +18,9 @@ from mstr_herald.utils import (
     CACHE_POLICY_DAILY,
 )
 from cache_refresher.full_report_refresher import get_report_cache_meta
+
+
+logger = logging.getLogger(__name__)
 
 
 def _format_cache_status(meta: Optional[Dict[str, Any]]) -> str:
@@ -62,8 +66,15 @@ def _generate_edit_rows(config: Dict[str, Any]) -> str:
             selected = "selected" if current_policy == value else ""
             options.append(f"<option value='{value}' {selected}>{html.escape(label)}</option>")
 
-        meta = get_report_cache_meta(report_name)
-        status_text = _format_cache_status(meta)
+        meta_error = ""
+        try:
+            meta = get_report_cache_meta(report_name)
+        except Exception as exc:  # pragma: no cover - safety net for Redis outages
+            logger.warning("Failed to load cache metadata for %s: %s", report_name, exc)
+            meta = None
+            meta_error = "Unavailable"
+
+        status_text = "Cache metadata unavailable" if meta_error else _format_cache_status(meta)
         meta_json = html.escape(json.dumps(meta) if meta is not None else "", quote=True)
 
         rows.append(
@@ -76,7 +87,7 @@ def _generate_edit_rows(config: Dict[str, Any]) -> str:
             f"<td><input value='{esc(viz_keys.get('summary'))}'></td>"
             f"<td><input value='{esc(viz_keys.get('detail'))}'></td>"
             f"<td>"
-            f"  <div class='cache-status' data-report='{esc(report_name)}' data-meta='{meta_json}'>"
+            f"  <div class='cache-status' data-report='{esc(report_name)}' data-meta='{meta_json}' data-error='{esc(meta_error)}'>"
             f"    <div class='status-text'>{html.escape(status_text)}</div>"
             f"    <button type='button' class='refresh-btn'>Refresh Cache</button>"
             f"  </div>"
@@ -153,12 +164,17 @@ def edit_dossiers() -> Response:
             }} catch (err) {{
               statusBox.dataset.meta = "";
             }}
+            statusBox.dataset.error = "";
           }} else {{
             statusBox.dataset.meta = "";
           }}
           const statusTextEl = statusBox.querySelector('.status-text');
           if (statusTextEl) {{
-            statusTextEl.textContent = formatMeta(meta);
+            if (statusBox.dataset.error) {{
+              statusTextEl.textContent = "Cache metadata unavailable";
+            }} else {{
+              statusTextEl.textContent = formatMeta(meta);
+            }}
           }}
         }}
 
@@ -169,7 +185,7 @@ def edit_dossiers() -> Response:
           button.disabled = true;
           button.textContent = "Refreshing...";
           if (statusTextEl) {{
-            statusTextEl.textContent = `Refreshing ${reportName}...`;
+            statusTextEl.textContent = `Refreshing ${{reportName}}...`;
           }}
           try {{
             const response = await fetch(`/refresh/${{encodeURIComponent(reportName)}}`, {{
@@ -178,9 +194,9 @@ def edit_dossiers() -> Response:
             const json = await response.json();
             if (response.ok && json.meta) {{
               updateStatusBox(statusBox, json.meta, reportName);
-              showMessage(`Refreshed cache for ${reportName}.`, "green");
+              showMessage(`Refreshed cache for ${{reportName}}.`, "green");
             }} else if (json.status === "skipped") {{
-              const reason = json.reason || `Refresh skipped for ${reportName}.`;
+              const reason = json.reason || `Refresh skipped for ${{reportName}}.`;
               showMessage(reason, "orange");
               if (statusTextEl) statusTextEl.textContent = reason;
             }} else if (json.status === "error") {{
@@ -193,7 +209,7 @@ def edit_dossiers() -> Response:
               if (statusTextEl) statusTextEl.textContent = fallback;
             }}
           }} catch (err) {{
-            showMessage(`Error refreshing ${reportName}: ${err}`, "red");
+            showMessage(`Error refreshing ${{reportName}}: ${{err}}`, "red");
           }} finally {{
             button.disabled = false;
             button.textContent = originalLabel;
@@ -237,7 +253,7 @@ def edit_dossiers() -> Response:
               showMessage(fallback, "red");
             }}
           }} catch (err) {{
-            showMessage(`Error refreshing caches: ${err}`, "red");
+            showMessage(`Error refreshing caches: ${{err}}`, "red");
           }} finally {{
             button.disabled = false;
             button.textContent = originalLabel;
@@ -333,6 +349,9 @@ def edit_dossiers() -> Response:
               }}
             }}
             updateStatusBox(statusBox, meta, statusBox.dataset.report || "");
+            if (!meta && statusBox.dataset.error) {{
+              statusBox.querySelector('.status-text').textContent = "Cache metadata unavailable";
+            }}
           }});
 
           const refreshAllBtn = document.getElementById('refresh-all-btn');
