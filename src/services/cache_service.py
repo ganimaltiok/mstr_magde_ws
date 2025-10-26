@@ -27,6 +27,13 @@ def _get_redis_client() -> redis.Redis:
     )
 
 
+def get_redis_client() -> redis.Redis:
+    """
+    Return a cached Redis client instance.
+    """
+    return _get_redis_client()
+
+
 def build_cache_key(report_name: str, info_type: str, scope: str = "all") -> str:
     return f"{report_name}:{scope}:{info_type}"
 
@@ -70,7 +77,7 @@ __all__ = [
     "build_cache_key",
     "get_dataframe",
     "get_metadata",
+    "get_redis_client",
     "set_dataframe",
     "set_metadata",
 ]
-

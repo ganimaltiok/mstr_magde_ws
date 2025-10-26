@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import logging
 
-from flask import Flask, jsonify
+from flask import Flask, Response, jsonify
 
 from services.settings import get_settings
 from web.blueprints import register_blueprints
 from web.errors import register_error_handlers
+from web.health import render_health_page
 from mstr_herald.connection import create_connection
 
 logger = logging.getLogger(__name__)
@@ -40,12 +41,15 @@ def create_app() -> Flask:
     register_blueprints(app)
     _eager_connection_check()
 
-    @app.get("/health")
-    def health_check():
+    @app.get("/ping")
+    def ping():
         return jsonify({"status": "ok"})
+
+    @app.get("/health")
+    def health_page() -> Response:
+        return Response(render_health_page(), content_type="text/html; charset=utf-8")
 
     return app
 
 
 __all__ = ["create_app"]
-
