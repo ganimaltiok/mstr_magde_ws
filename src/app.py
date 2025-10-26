@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from flask import Flask
+from flask import Flask, jsonify
 from dotenv import load_dotenv
 import os
 import logging
@@ -45,6 +45,11 @@ def create_app():
     app.register_blueprint(admin)
     app.register_blueprint(configure_bp)
     app.register_blueprint(cache_bp)
+
+    @app.route("/health", methods=["GET"])
+    def health_check():
+        # Basic health check for external monitoring
+        return jsonify({"status": "ok"}), 200
 
     return app
 
