@@ -5,11 +5,15 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
+import logging
+
 from dotenv import load_dotenv
 
 # Ensure environment variables from a local .env file are available everywhere,
 # including background jobs that import this module directly.
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -30,6 +34,27 @@ def _resolve_path(env_value: str | None, default: Path) -> Path:
     return default
 
 
+def _parse_int(raw_value: str | None, fallback: int, env_key: str) -> int:
+    if raw_value is None:
+        return fallback
+
+    # Support inline comments such as "60  # seconds"
+    cleaned = raw_value.split("#", 1)[0].strip()
+    if not cleaned:
+        return fallback
+
+    try:
+        return int(cleaned)
+    except ValueError:
+        logger.warning(
+            "Environment variable %s='%s' is not a valid integer. Using fallback %d.",
+            env_key,
+            raw_value,
+            fallback,
+        )
+        return fallback
+
+
 @lru_cache()
 def get_settings() -> Settings:
     """
@@ -42,14 +67,13 @@ def get_settings() -> Settings:
     return Settings(
         base_dir=base_dir,
         cache_type=os.getenv("CACHE_TYPE", "SimpleCache"),
-        cache_default_timeout=int(os.getenv("CACHE_TIMEOUT", "60")),
+        cache_default_timeout=_parse_int(os.getenv("CACHE_TIMEOUT"), 60, "CACHE_TIMEOUT"),
         redis_host=os.getenv("REDIS_HOST", "localhost"),
-        redis_port=int(os.getenv("REDIS_PORT", "6379")),
-        redis_db=int(os.getenv("REDIS_DB", "0")),
+        redis_port=_parse_int(os.getenv("REDIS_PORT"), 6379, "REDIS_PORT"),
+        redis_db=_parse_int(os.getenv("REDIS_DB"), 0, "REDIS_DB"),
         refresh_log_path=_resolve_path(os.getenv("REFRESH_LOG_PATH"), refresh_log_default),
         config_path=_resolve_path(os.getenv("MSTR_CONFIG_PATH"), config_default),
     )
 
 
 __all__ = ["Settings", "get_settings"]
-
