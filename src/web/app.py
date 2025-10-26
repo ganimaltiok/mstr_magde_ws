@@ -50,7 +50,7 @@ def create_app() -> Flask:
 
     @app.after_request
     def _record_request(response):
-        if not request.path.startswith("/api/v3"):
+        if request.blueprint != "reports_v3":
             return response
         try:
             duration_ms = int((time.perf_counter() - getattr(g, "_request_start_time", time.perf_counter())) * 1000)
