@@ -130,6 +130,13 @@ def get_report_payload(
 
     if use_cache and cache_key:
         df = cache_service.get_dataframe(cache_key)
+        if df is not None and df.empty:
+            logger.info(
+                "%s (%s): Cached dataframe is empty; falling back to live fetch.",
+                report_name,
+                info_type,
+            )
+            df = None
         cache_hit = df is not None
 
     if df is None:
