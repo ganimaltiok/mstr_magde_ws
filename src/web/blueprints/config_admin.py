@@ -10,7 +10,7 @@ from flask import Blueprint, Response, jsonify, request
 
 from mstr_herald.connection import create_connection
 from mstr_herald.dossier_inspector import discover_dossier
-from mstr_herald.utils import (
+from services.config_store import (
     load_config,
     save_config,
     resolve_cache_policy,
@@ -44,7 +44,7 @@ def _format_cache_status(meta: Optional[Dict[str, Any]]) -> str:
     suffix = " (partial)" if meta.get("partial") else ""
     return f"{refreshed_at} - {info_summary}{suffix}"
 
-configure_bp = Blueprint("configure", __name__)
+config_bp = Blueprint("configure", __name__)
 
 
 def _generate_edit_rows(config: Dict[str, Any]) -> str:
@@ -97,7 +97,7 @@ def _generate_edit_rows(config: Dict[str, Any]) -> str:
     return "\n".join(rows)
 
 
-@configure_bp.route("/admin/edit", methods=["GET"])
+@config_bp.route("/admin/edit", methods=["GET"])
 def edit_dossiers() -> Response:
     config = load_config() or {}
     table_rows = _generate_edit_rows(config)
@@ -392,7 +392,7 @@ def edit_dossiers() -> Response:
     return Response(html_page, content_type="text/html; charset=utf-8")
 
 
-@configure_bp.route("/admin/edit", methods=["POST"])
+@config_bp.route("/admin/edit", methods=["POST"])
 def save_dossiers():
     payload = request.get_json(silent=True)
     if not isinstance(payload, dict):
@@ -418,7 +418,7 @@ def save_dossiers():
     return jsonify({"status": "ok"})
 
 
-@configure_bp.route("/admin/configure", methods=["GET"])
+@config_bp.route("/admin/configure", methods=["GET"])
 def view_config() -> Response:
     config = load_config() or {}
     config_yaml = yaml.safe_dump(config, allow_unicode=True, default_flow_style=False)
@@ -567,7 +567,7 @@ def view_config() -> Response:
     return Response(html_content, content_type="text/html; charset=utf-8")
 
 
-@configure_bp.route("/admin/configure", methods=["POST"])
+@config_bp.route("/admin/configure", methods=["POST"])
 def add_or_update_config():
     data = request.form
 
@@ -605,7 +605,7 @@ def add_or_update_config():
     return jsonify({"status": "saved", "report": report_name})
 
 
-@configure_bp.route("/admin/configure/delete", methods=["POST"])
+@config_bp.route("/admin/configure/delete", methods=["POST"])
 def delete_config():
     data = request.form
     report_name = data.get("report_name")
@@ -622,7 +622,7 @@ def delete_config():
     return jsonify({"status": "deleted", "report": report_name})
 
 
-@configure_bp.route("/admin/discover", methods=["GET"])
+@config_bp.route("/admin/discover", methods=["GET"])
 def discover():
     dossier_id = request.args.get("dossier_id")
     if not dossier_id:
@@ -640,7 +640,7 @@ def discover():
     return jsonify(info)
 
 
-@configure_bp.route("/admin/discover_json", methods=["POST"])
+@config_bp.route("/admin/discover_json", methods=["POST"])
 def discover_json():
     payload = request.get_json(silent=True) or {}
     dossier_id = payload.get("dossier_id")
@@ -659,8 +659,11 @@ def discover_json():
     return jsonify(info)
 
 
-@configure_bp.route("/admin/configure_yaml", methods=["GET"])
+@config_bp.route("/admin/configure_yaml", methods=["GET"])
 def get_config_yaml():
     config = load_config() or {}
     config_yaml = yaml.safe_dump(config, allow_unicode=True, default_flow_style=False)
     return Response(config_yaml, content_type="text/plain; charset=utf-8")
+
+
+__all__ = ["config_bp"]

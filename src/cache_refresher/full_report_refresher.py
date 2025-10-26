@@ -1,64 +1,19 @@
-import json
 import logging
-import os
-import pickle
 from datetime import datetime
 from typing import Any, Dict, Iterable, Optional
 
-import pandas as pd
-import redis
-
+from services import cache_service
+from services.config_store import CACHE_POLICY_DAILY, load_config, resolve_cache_policy
+from services.dataframe_tools import normalise_agency_code_columns, normalise_columns
 from mstr_herald.connection import create_connection
-from mstr_herald.fetcher_v2 import fetch_report_csv
-from mstr_herald.utils import (
-    CACHE_POLICY_DAILY,
-    _to_camel_no_tr,
-    load_config,
-    resolve_cache_policy,
-)
+from mstr_herald.reports import fetch_report_dataframe
 
 logger = logging.getLogger(__name__)
-
-import warnings
-
-warnings.filterwarnings("ignore", message="Warning: For given format of date*")
-
-BASE_DIR = os.path.dirname(__file__)
-LOG_FILE = os.path.join(BASE_DIR, "refresh_logs", "refresh_cache.log")
-
-redis_client = redis.Redis(
-    host=os.getenv("REDIS_HOST", "localhost"),
-    port=int(os.getenv("REDIS_PORT", 6379)),
-    db=int(os.getenv("REDIS_DB", 0)),
-    decode_responses=False,
-)
-
-META_SUFFIX = ":meta"
-
-
-def normalize_agency_code_columns(df: pd.DataFrame) -> pd.DataFrame:
-    """Convert acente-related numeric columns to strings to avoid float suffixes like 100100.0."""
-    for col in df.columns:
-        col_lower = col.lower()
-        if ("acente" in col_lower or "agency" in col_lower) and df[col].dtype.kind in {"i", "f"}:
-            df[col] = df[col].apply(lambda x: str(int(x)) if not pd.isna(x) else x)
-    return df
-
-
-def _meta_key(report_name: str) -> str:
-    return f"{report_name}{META_SUFFIX}"
 
 
 def get_report_cache_meta(report_name: str) -> Optional[Dict[str, Any]]:
     """Return cached metadata for a report, if available."""
-    raw = redis_client.get(_meta_key(report_name))
-    if not raw:
-        return None
-    try:
-        return json.loads(raw.decode("utf-8"))
-    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
-        logger.warning("Failed to decode cache metadata for %s: %s", report_name, exc)
-        return None
+    return cache_service.get_metadata(report_name)
 
 
 def refresh_full_reports(report_names: Optional[Iterable[str]] = None) -> Dict[str, Any]:
@@ -135,12 +90,12 @@ def refresh_full_reports(report_names: Optional[Iterable[str]] = None) -> Dict[s
             errors_for_report: list[str] = []
 
             for info_type in info_types:
-                cache_key = f"{report_name}:all:{info_type}"
+                cache_key = cache_service.build_cache_key(report_name, info_type)
                 try:
-                    df = fetch_report_csv(conn, report_name, filters={}, info_type=info_type)
-                    df.columns = [_to_camel_no_tr(c) for c in df.columns]
-                    df = normalize_agency_code_columns(df)
-                    redis_client.set(cache_key, pickle.dumps(df))
+                    df = fetch_report_dataframe(conn, report_name, cfg, filters={}, info_type=info_type)
+                    df = normalise_columns(df)
+                    df = normalise_agency_code_columns(df)
+                    cache_service.set_dataframe(cache_key, df)
                     refreshed_meta["info_types"][info_type] = {
                         "rows": int(len(df)),
                         "columns": list(df.columns),
@@ -164,7 +119,7 @@ def refresh_full_reports(report_names: Optional[Iterable[str]] = None) -> Dict[s
 
             if refreshed_meta["info_types"]:
                 refreshed_meta["partial"] = bool(errors_for_report)
-                redis_client.set(_meta_key(report_name), json.dumps(refreshed_meta))
+                cache_service.set_metadata(report_name, refreshed_meta)
                 result["refreshed"][report_name] = refreshed_meta
             else:
                 result["skipped"][report_name] = "All info types failed to refresh."

@@ -132,17 +132,33 @@ Both commands return the same metadata summary as the HTTP endpoints.
 ├── Dockerfile
 ├── requirements.txt
 └── src
-    ├── app.py                     # Flask app factory & blueprint registration
-    ├── api_v3.py                  # Primary REST endpoints
-    ├── cache_routes.py            # /refresh helpers
+    ├── app.py                     # Entry point delegating to web.create_app
     ├── cache_monitor.py           # CLI helper for cron
     ├── cache_refresher/
     │   ├── cache_refresher.py     # Wrapper around full report refresh
     │   └── full_report_refresher.py  # Redis snapshot + metadata logic
-    ├── configurator.py            # Admin UI for dossiers + cache actions
     ├── config
     │   └── dossiers.yaml          # Dossier definitions
-    └── mstr_herald                # MicroStrategy connection + utility code
+    ├── mstr_herald                # MicroStrategy connection helpers
+    │   ├── connection.py
+    │   ├── dossier_inspector.py
+    │   ├── filter_utils.py
+    │   └── reports.py
+    ├── services                   # Shared business logic & adapters
+    │   ├── cache_service.py
+    │   ├── config_store.py
+    │   ├── dataframe_tools.py
+    │   ├── report_service.py
+    │   └── settings.py
+    └── web                        # Flask application & blueprints
+        ├── app.py
+        ├── errors.py
+        └── blueprints/
+            ├── __init__.py
+            ├── cache_admin.py
+            ├── config_admin.py
+            ├── logs.py
+            └── reports.py
 ```
 
 ## Environment Variables

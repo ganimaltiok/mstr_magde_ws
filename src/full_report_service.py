@@ -1,13 +1,12 @@
 import logging
 import time
-from datetime import datetime
-from cache_refresher.full_report_refresher import refresh_full_reports
-import os
 import warnings
+from datetime import datetime
 
+from cache_refresher.full_report_refresher import refresh_full_reports
+from services.settings import get_settings
 
-BASE_DIR = os.path.dirname(__file__)
-LOG_FILE = os.path.join(BASE_DIR, "refresh_cache.log")
+LOG_FILE = get_settings().refresh_log_path
 
 SKIP_HOURS = [0, 1, 2, 3, 4, 5, 18, 20, 21, 22, 23]
 
@@ -40,12 +39,6 @@ def run_service(interval_seconds: int = 120) -> None:
 if __name__ == "__main__":
     warnings.filterwarnings("ignore", message="Warning: For given format of date*")
     logging.captureWarnings(True)
-
-    logging.basicConfig(
-        level=logging.INFO,
-        filename=LOG_FILE,
-        filemode='a'
-    )
 
     logging.info("Starting Full Report Refresh Service")
     run_service()
