@@ -14,8 +14,11 @@ from services.config_store import (
     load_config,
     save_config,
     resolve_cache_policy,
+    resolve_data_policy,
     CACHE_POLICY_NONE,
     CACHE_POLICY_DAILY,
+    DATA_POLICY_MICROSTRATEGY,
+    DATA_POLICY_POSTGRESQL,
 )
 from cache_refresher.full_report_refresher import get_report_cache_meta
 
@@ -40,9 +43,9 @@ def _format_cache_status(meta: Optional[Dict[str, Any]]) -> str:
             fragment = f"{fragment} / {col_txt}"
         parts.append(fragment)
 
-    info_summary = "; ".join(parts) if parts else "no datasets cached"
+    info_summary = "\n".join(parts) if parts else "no datasets cached"
     suffix = " (partial)" if meta.get("partial") else ""
-    return f"{refreshed_at} - {info_summary}{suffix}"
+    return f"{refreshed_at}{suffix}\n{info_summary}" if info_summary else f"{refreshed_at}{suffix}"
 
 config_bp = Blueprint("configure", __name__)
 
@@ -78,16 +81,28 @@ def _generate_edit_rows(config: Dict[str, Any]) -> str:
         status_text = "Cache metadata unavailable" if meta_error else _format_cache_status(meta)
         meta_json = html.escape(json.dumps(meta) if meta is not None else "", quote=True)
 
+        data_policy = resolve_data_policy(cfg)
+        data_policy_options = []
+        for value, label in (
+            (DATA_POLICY_MICROSTRATEGY, "MicroStrategy"),
+            (DATA_POLICY_POSTGRESQL, "PostgreSQL"),
+        ):
+            selected = "selected" if data_policy == value else ""
+            data_policy_options.append(
+                f"<option value='{value}' {selected}>{html.escape(label)}</option>"
+            )
+
         rows.append(
-            "<tr>"
+            f"<tr data-policy='{data_policy}'>"
             f"<td><input data-field='report_name' value='{esc(report_name)}'></td>"
-            f"<td><input data-field='cube_id' value='{esc(cfg.get('cube_id'))}'></td>"
-            f"<td><input data-field='dossier_id' value='{esc(cfg.get('dossier_id'))}'></td>"
-            f"<td><input data-field='postgres_table' placeholder='schema.table' value='{esc(postgres_table)}'></td>"
+            f"<td><select data-field='data_policy' class='data-policy-select'>{''.join(data_policy_options)}</select></td>"
+            f"<td class='micro-field'><input data-field='cube_id' value='{esc(cfg.get('cube_id'))}'></td>"
+            f"<td class='micro-field'><input data-field='dossier_id' value='{esc(cfg.get('dossier_id'))}'></td>"
+            f"<td class='postgres-field'><input data-field='postgres_table' placeholder='schema.table' value='{esc(postgres_table)}'></td>"
             f"<td><select data-field='cache_policy'>{''.join(options)}</select></td>"
-            f"<td><input data-field='agency_name' value='{esc(filters.get('agency_name'))}'></td>"
-            f"<td><input data-field='summary_viz' value='{esc(viz_keys.get('summary'))}'></td>"
-            f"<td><input data-field='detail_viz' value='{esc(viz_keys.get('detail'))}'></td>"
+            f"<td class='micro-field'><input data-field='agency_name' value='{esc(filters.get('agency_name'))}'></td>"
+            f"<td class='micro-field'><input data-field='summary_viz' value='{esc(viz_keys.get('summary'))}'></td>"
+            f"<td class='micro-field'><input data-field='detail_viz' value='{esc(viz_keys.get('detail'))}'></td>"
             f"<td class='status-cell'>"
             f"  <div class='cache-status' data-report='{esc(report_name)}' data-meta='{meta_json}' data-error='{esc(meta_error)}'>"
             f"    <div class='status-text'>{html.escape(status_text)}</div>"
@@ -120,14 +135,18 @@ def edit_dossiers() -> Response:
         button {{ margin-top: 10px; padding: 6px 12px; }}
         #msg {{ margin-top:10px; color: green; }}
         .cache-status {{ display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }}
-        .cache-status .status-text {{ font-size: 0.85em; color: #555; }}
+        .cache-status .status-text {{ font-size: 0.85em; color: #555; white-space: pre-line; }}
         .actions {{ margin-top: 12px; display: flex; gap: 10px; }}
         .actions-cell {{ text-align: center; }}
         .actions-cell .refresh-btn {{ margin-top: 0; padding: 6px 12px; }}
+        tr[data-policy="{DATA_POLICY_POSTGRESQL}"] .micro-field {{ display: none; }}
+        tr[data-policy="{DATA_POLICY_MICROSTRATEGY}"] .postgres-field {{ display: none; }}
       </style>
       <script>
         const CACHE_POLICY_NONE = "{CACHE_POLICY_NONE}";
         const CACHE_POLICY_DAILY = "{CACHE_POLICY_DAILY}";
+        const DATA_POLICY_MICROSTRATEGY = "{DATA_POLICY_MICROSTRATEGY}";
+        const DATA_POLICY_POSTGRESQL = "{DATA_POLICY_POSTGRESQL}";
 
         function showMessage(text, color) {{
           const msg = document.getElementById('msg');
@@ -266,6 +285,25 @@ def edit_dossiers() -> Response:
           }}
         }}
 
+        function applyPolicyToRow(row, policy) {{
+          if (!row) return;
+          row.dataset.policy = policy;
+          const microCells = row.querySelectorAll('.micro-field');
+          const postgresCells = row.querySelectorAll('.postgres-field');
+          microCells.forEach(cell => {{
+            cell.style.display = policy === DATA_POLICY_MICROSTRATEGY ? '' : 'none';
+            cell.querySelectorAll('input,select,textarea').forEach(el => {{
+              el.disabled = policy === DATA_POLICY_POSTGRESQL;
+            }});
+          }});
+          postgresCells.forEach(cell => {{
+            cell.style.display = policy === DATA_POLICY_POSTGRESQL ? '' : 'none';
+            cell.querySelectorAll('input,select,textarea').forEach(el => {{
+              el.disabled = policy === DATA_POLICY_MICROSTRATEGY;
+            }});
+          }});
+        }}
+
         function saveTable() {{
           const rows = document.querySelectorAll('tbody tr');
           const payload = {{}};
@@ -278,7 +316,9 @@ def edit_dossiers() -> Response:
             }});
             const reportName = data.report_name;
             if (!reportName) return;
+            const dataPolicy = data.data_policy || DATA_POLICY_MICROSTRATEGY;
             payload[reportName] = {{
+              data_policy: dataPolicy,
               cube_id: data.cube_id || null,
               dossier_id: data.dossier_id || null,
               postgres_table: data.postgres_table || null,
@@ -289,6 +329,14 @@ def edit_dossiers() -> Response:
                 detail: data.detail_viz || null
               }}
             }};
+            if (dataPolicy === DATA_POLICY_POSTGRESQL) {{
+              payload[reportName].cube_id = null;
+              payload[reportName].dossier_id = null;
+              payload[reportName].filters = {{}};
+              payload[reportName].viz_keys = {{}};
+            }} else {{
+              payload[reportName].postgres_table = null;
+            }}
           }});
 
           fetch('/admin/edit', {{
@@ -310,20 +358,24 @@ def edit_dossiers() -> Response:
 
         function addRow() {{
           const template = `
-            <tr>
+            <tr data-policy='${{DATA_POLICY_MICROSTRATEGY}}'>
               <td><input data-field='report_name'></td>
-              <td><input data-field='cube_id'></td>
-              <td><input data-field='dossier_id'></td>
-              <td><input data-field='postgres_table' placeholder='schema.table'></td>
+              <td><select data-field='data_policy' class='data-policy-select'>
+                    <option value='${{DATA_POLICY_MICROSTRATEGY}}' selected>MicroStrategy</option>
+                    <option value='${{DATA_POLICY_POSTGRESQL}}'>PostgreSQL</option>
+                  </select></td>
+              <td class="micro-field"><input data-field='cube_id'></td>
+              <td class="micro-field"><input data-field='dossier_id'></td>
+              <td class="postgres-field"><input data-field='postgres_table' placeholder='schema.table'></td>
               <td>
                 <select data-field='cache_policy'>
                   <option value='{CACHE_POLICY_NONE}' selected>No Cache</option>
                   <option value='{CACHE_POLICY_DAILY}'>Daily (refresh via job)</option>
                 </select>
               </td>
-              <td><input data-field='agency_name'></td>
-              <td><input data-field='summary_viz'></td>
-              <td><input data-field='detail_viz'></td>
+              <td class="micro-field"><input data-field='agency_name'></td>
+              <td class="micro-field"><input data-field='summary_viz'></td>
+              <td class="micro-field"><input data-field='detail_viz'></td>
               <td class="status-cell">
                 <div class="cache-status" data-report="">
                   <div class="status-text">Never cached</div>
@@ -333,7 +385,10 @@ def edit_dossiers() -> Response:
                 <button type="button" class="refresh-btn">Refresh Cache</button>
               </td>
             </tr>`;
-          document.querySelector('tbody').insertAdjacentHTML('beforeend', template);
+          const tbody = document.querySelector('tbody');
+          tbody.insertAdjacentHTML('beforeend', template);
+          const newRow = tbody.lastElementChild;
+          applyPolicyToRow(newRow, DATA_POLICY_MICROSTRATEGY);
         }}
 
         document.addEventListener('click', (event) => {{
@@ -357,7 +412,20 @@ def edit_dossiers() -> Response:
           refreshReport(reportName, btn);
         }});
 
+        document.addEventListener('change', (event) => {{
+          const select = event.target.closest('.data-policy-select');
+          if (!select) return;
+          const row = select.closest('tr');
+          const policy = select.value || DATA_POLICY_MICROSTRATEGY;
+          applyPolicyToRow(row, policy);
+        }});
+
         document.addEventListener('DOMContentLoaded', () => {{
+          document.querySelectorAll('tbody tr').forEach(row => {{
+            const select = row.querySelector('.data-policy-select');
+            const policy = select ? (select.value || DATA_POLICY_MICROSTRATEGY) : DATA_POLICY_MICROSTRATEGY;
+            applyPolicyToRow(row, policy);
+          }});
           document.querySelectorAll('.cache-status').forEach(statusBox => {{
             const metaStr = statusBox.dataset.meta || "";
             let meta = null;
@@ -387,6 +455,7 @@ def edit_dossiers() -> Response:
         <thead>
           <tr>
             <th>Report Name</th>
+            <th>Data Policy</th>
             <th>Cube ID</th>
             <th>Dossier ID</th>
             <th>Postgres Table</th>
@@ -427,10 +496,40 @@ def save_dossiers():
         policy = (cfg.get("cache_policy") or CACHE_POLICY_NONE).strip().lower()
         if policy not in {CACHE_POLICY_NONE, CACHE_POLICY_DAILY}:
             policy = CACHE_POLICY_NONE
-        normalised[report] = {
-            **cfg,
-            "cache_policy": policy,
-        }
+        data_policy = (cfg.get("data_policy") or DATA_POLICY_MICROSTRATEGY).strip().lower()
+        if data_policy not in {DATA_POLICY_MICROSTRATEGY, DATA_POLICY_POSTGRESQL}:
+            data_policy = DATA_POLICY_MICROSTRATEGY
+
+        entry = dict(cfg)
+        entry["cache_policy"] = policy
+        entry["data_policy"] = data_policy
+
+        filters = entry.get("filters") or {}
+        if not isinstance(filters, dict):
+            filters = {}
+
+        viz_keys = entry.get("viz_keys") or {}
+        if not isinstance(viz_keys, dict):
+            viz_keys = {}
+
+        if data_policy == DATA_POLICY_POSTGRESQL:
+            entry["cube_id"] = None
+            entry["dossier_id"] = None
+            entry["postgres_table"] = (entry.get("postgres_table") or "").strip() or None
+            filters = {}
+            viz_keys = {}
+        else:
+            entry["postgres_table"] = None
+            entry["cube_id"] = (entry.get("cube_id") or "").strip() or None
+            entry["dossier_id"] = (entry.get("dossier_id") or "").strip() or None
+            filters["agency_name"] = (filters.get("agency_name") or "").strip() or None
+            viz_keys["summary"] = (viz_keys.get("summary") or "").strip() or None
+            viz_keys["detail"] = (viz_keys.get("detail") or "").strip() or None
+
+        entry["filters"] = filters
+        entry["viz_keys"] = viz_keys
+
+        normalised[report] = entry
 
     try:
         save_config(normalised)
@@ -563,6 +662,11 @@ def view_config() -> Response:
           <label>Report Name:</label><input name='report_name'>
           <label>Dossier ID:</label><input name='dossier_id'>
           <label>Cube ID:</label><input name='cube_id'>
+          <label>Data Policy:</label>
+          <select name='data_policy'>
+            <option value='{DATA_POLICY_MICROSTRATEGY}'>MicroStrategy</option>
+            <option value='{DATA_POLICY_POSTGRESQL}'>PostgreSQL</option>
+          </select>
           <label>Postgres Table (schema.table):</label><input name='postgres_table'>
           <label>Summary Viz Key:</label><input name='viz_summary'>
           <label>Detail Viz Key:</label><input name='viz_detail'>
@@ -597,7 +701,10 @@ def add_or_update_config():
     report_name = data.get("report_name")
     dossier_id = data.get("dossier_id") or None
     cube_id = data.get("cube_id") or None
-    postgres_table = data.get("postgres_table") or None
+    postgres_table = (data.get("postgres_table") or "").strip() or None
+    data_policy = (data.get("data_policy") or DATA_POLICY_MICROSTRATEGY).strip().lower()
+    if data_policy not in {DATA_POLICY_MICROSTRATEGY, DATA_POLICY_POSTGRESQL}:
+        data_policy = DATA_POLICY_MICROSTRATEGY
     cache_policy = (data.get("cache_policy") or CACHE_POLICY_NONE).lower().strip()
     if cache_policy not in {CACHE_POLICY_NONE, CACHE_POLICY_DAILY}:
         cache_policy = CACHE_POLICY_NONE
@@ -605,24 +712,34 @@ def add_or_update_config():
     if not report_name:
         return jsonify({"error": "report_name is required"}), 400
 
-    if not postgres_table and not all([dossier_id, cube_id]):
-        return jsonify({"error": "dossier_id and cube_id are required when postgres_table is not set"}), 400
+    if data_policy == DATA_POLICY_POSTGRESQL:
+        if not postgres_table:
+            return jsonify({"error": "postgres_table is required when data_policy=postgresql"}), 400
+    else:
+        if not all([dossier_id, cube_id]):
+            return jsonify({"error": "dossier_id and cube_id are required when data_policy=microstrategy"}), 400
 
     summary_viz = data.get("viz_summary") or None
     detail_viz = data.get("viz_detail") or None
     filter_agency = data.get("filter_agency_name") or None
 
+    if data_policy == DATA_POLICY_POSTGRESQL:
+        summary_viz = None
+        detail_viz = None
+        filter_agency = None
+
     new_entry = {
-        "cube_id": cube_id,
-        "dossier_id": dossier_id,
+        "data_policy": data_policy,
+        "cube_id": cube_id if data_policy == DATA_POLICY_MICROSTRATEGY else None,
+        "dossier_id": dossier_id if data_policy == DATA_POLICY_MICROSTRATEGY else None,
         "cache_policy": cache_policy,
-        "postgres_table": postgres_table,
+        "postgres_table": postgres_table if data_policy == DATA_POLICY_POSTGRESQL else None,
         "filters": {
-            "agency_name": filter_agency
+            "agency_name": filter_agency if data_policy == DATA_POLICY_MICROSTRATEGY else None
         },
         "viz_keys": {
-            "summary": summary_viz,
-            "detail": detail_viz
+            "summary": summary_viz if data_policy == DATA_POLICY_MICROSTRATEGY else None,
+            "detail": detail_viz if data_policy == DATA_POLICY_MICROSTRATEGY else None
         }
     }
 

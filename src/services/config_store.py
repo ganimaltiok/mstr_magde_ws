@@ -9,6 +9,9 @@ from services.settings import get_settings
 
 CACHE_POLICY_NONE = "none"
 CACHE_POLICY_DAILY = "daily"
+
+DATA_POLICY_MICROSTRATEGY = "microstrategy"
+DATA_POLICY_POSTGRESQL = "postgresql"
 _LEGACY_CACHE_FLAG_KEY = "is_csv_cached"
 
 
@@ -66,5 +69,25 @@ def resolve_cache_policy(cfg: Dict[str, Any] | None) -> str:
     return CACHE_POLICY_DAILY if legacy_flag > 0 else CACHE_POLICY_NONE
 
 
-__all__ = ["CACHE_POLICY_NONE", "CACHE_POLICY_DAILY", "get_config_path", "load_config", "save_config", "resolve_cache_policy"]
+def resolve_data_policy(cfg: Dict[str, Any] | None) -> str:
+    if not cfg:
+        return DATA_POLICY_MICROSTRATEGY
+    policy = (cfg.get("data_policy") or "").strip().lower()
+    if policy in {DATA_POLICY_MICROSTRATEGY, DATA_POLICY_POSTGRESQL}:
+        return policy
+    if cfg.get("postgres_table"):
+        return DATA_POLICY_POSTGRESQL
+    return DATA_POLICY_MICROSTRATEGY
 
+
+__all__ = [
+    "CACHE_POLICY_NONE",
+    "CACHE_POLICY_DAILY",
+    "DATA_POLICY_MICROSTRATEGY",
+    "DATA_POLICY_POSTGRESQL",
+    "get_config_path",
+    "load_config",
+    "save_config",
+    "resolve_cache_policy",
+    "resolve_data_policy",
+]

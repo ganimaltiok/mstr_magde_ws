@@ -7,7 +7,14 @@ from typing import Any, Dict, Optional, Tuple
 import pandas as pd
 
 from services import cache_service
-from services.config_store import CACHE_POLICY_DAILY, load_config, resolve_cache_policy
+from services.config_store import (
+    CACHE_POLICY_DAILY,
+    DATA_POLICY_MICROSTRATEGY,
+    DATA_POLICY_POSTGRESQL,
+    load_config,
+    resolve_cache_policy,
+    resolve_data_policy,
+)
 from services.dataframe_tools import (
     dataframe_to_records,
     extract_cube_time,
@@ -80,8 +87,11 @@ def _prepare_dataframe(df: pd.DataFrame, filters: Dict[str, Any], agency_code: O
 
 
 def _fetch_remote(report_name: str, cfg: Dict[str, Any], info_type: str, filters: Dict[str, Any]) -> pd.DataFrame:
-    pg_ref = parse_table_reference(cfg.get("postgres_table"))
-    if pg_ref:
+    data_policy = resolve_data_policy(cfg)
+    if data_policy == DATA_POLICY_POSTGRESQL:
+        pg_ref = parse_table_reference(cfg.get("postgres_table"))
+        if not pg_ref:
+            raise ValueError(f"postgres_table must be defined for Postgres-backed report '{report_name}'.")
         logger.info("%s: Fetching data from Postgres table %s", report_name, cfg.get("postgres_table"))
         return fetch_table_dataframe(pg_ref)
 
@@ -96,7 +106,7 @@ def _fetch_remote(report_name: str, cfg: Dict[str, Any], info_type: str, filters
 
 
 def _validate_info_type(cfg: Dict[str, Any], info_type: str) -> None:
-    if cfg.get("postgres_table"):
+    if resolve_data_policy(cfg) == DATA_POLICY_POSTGRESQL:
         if info_type != "summary":
             raise UnsupportedInfoTypeError("Postgres-backed reports only support info_type='summary'.")
         return
@@ -132,8 +142,11 @@ def get_report_payload(
     _validate_info_type(cfg, info_type)
 
     cache_policy = resolve_cache_policy(cfg)
+    data_policy = resolve_data_policy(cfg)
     use_cache = cache_policy == CACHE_POLICY_DAILY
-    cache_key = cache_service.build_cache_key(report_name, info_type) if use_cache else None
+    # Postgres-backed reports always cache under summary key
+    cache_key_info_type = info_type if data_policy == DATA_POLICY_MICROSTRATEGY else "summary"
+    cache_key = cache_service.build_cache_key(report_name, cache_key_info_type) if use_cache else None
 
     df = None
     cache_hit = False
@@ -166,6 +179,7 @@ def get_report_payload(
         "total_pages": total_pages,
         "data_refresh_time": _format_cube_time(cube_time),
         "cache_policy": cache_policy,
+        "data_policy": data_policy,
         "is_cached": use_cache,
         "cache_hit": cache_hit,
     }
@@ -182,11 +196,13 @@ def list_reports_summary() -> Dict[str, Any]:
 
     for report_name, cfg in config.items():
         policy = resolve_cache_policy(cfg)
+        data_policy = resolve_data_policy(cfg)
         summaries.append(
             {
                 "name": report_name,
                 "cache_policy": policy,
                 "is_cached": policy == CACHE_POLICY_DAILY,
+                "data_policy": data_policy,
                 "requires_agency": "agency_name" in (cfg.get("filters") or {}),
                 "available_filters": sorted((cfg.get("filters") or {}).keys()),
                 "postgres_table": cfg.get("postgres_table"),

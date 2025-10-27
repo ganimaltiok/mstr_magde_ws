@@ -7,6 +7,7 @@ MicroStrategy Herald is a Flask-based REST service that turns MicroStrategy doss
 - Modern `/api/v3` endpoints with consistent JSON payloads
 - Flexible filtering, pagination, and per-agency data slicing
 - Redis-backed daily cache snapshots with rich metadata
+- Dual data policies: serve reports from MicroStrategy or PostgreSQL tables/views
 - Optional Postgres-backed datasets that hydrate Redis directly from `schema.table`
 - Admin console for dossier configuration plus one-click cache refresh
 - Helper HTTP endpoints and CLI scripts for cron-friendly cache refreshes
@@ -57,10 +58,11 @@ python app.py
 All dossier definitions live in `src/config/dossiers.yaml`. Key fields:
 
 - `cube_id`, `dossier_id`: MicroStrategy identifiers.
-- `viz_keys`: Maps logical info types (e.g. `summary`, `detail`) to dossier visualization keys. Only non-null entries are cached.
-- `filters`: Dictionary of filter keys. Specify `agency_name` when the dossier requires an agency selection.
+- `data_policy`: Either `microstrategy` (default) or `postgresql`.
+- `viz_keys`: Maps logical info types (e.g. `summary`, `detail`) to dossier visualization keys. Only used when `data_policy = microstrategy`.
+- `filters`: Dictionary of filter keys. Specify `agency_name` when the dossier requires an agency selection (MicroStrategy only).
 - `cache_policy`: Either `none` (always live) or `daily` (cacheable).
-- `postgres_table`: Optional `schema.table` identifier; when present the report pulls data from Postgres instead of MicroStrategy.
+- `postgres_table`: Optional `schema.table` identifier used when `data_policy = postgresql` to load data straight from the database.
 
 The admin UI at `/admin/edit` lets you edit these values, view the latest cache metadata, and trigger manual refreshes.
 
@@ -96,6 +98,7 @@ List configured dossiers with their cache policy, available filters, and whether
 | `/refresh` | POST/GET | Refreshes all reports with `cache_policy = daily`. Returns a summary with refreshed metadata, skipped items, and errors. |
 | `/refresh/<report_name>` | POST/GET | Refresh a single report. Response includes the refreshed metadata (`meta`) or error details. |
 | `/refresh/meta/<report_name>` | GET | Retrieve cached metadata without triggering a refresh. Useful for diagnostics. |
+| `/admin/log` | GET | View recent `/api/v3` requests with timestamps, status codes, and JSON payload previews. |
 | `/admin/log` | GET | Live table of recent `/api/v3/...` requests with JSON preview popups. |
 
 Returned metadata includes the `refreshed_at` timestamp and per `info_type` row/column counts plus cache keys.
@@ -107,6 +110,7 @@ Visit `/admin/edit` to:
 - Edit dossier metadata (`cube_id`, `viz_keys`, `cache_policy`, etc.).
 - Review the latest cache metadata per report (last refresh time, row counts).
 - Trigger one-click cache refreshes per report or refresh all daily caches.
+- Switch the data policy between MicroStrategy and PostgreSQL and edit the relevant fields inline.
 
 ### CLI / scheduled jobs
 

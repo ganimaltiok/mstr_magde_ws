@@ -8,6 +8,7 @@ from typing import Callable, Iterable, List
 from services.cache_service import get_redis_client
 from services.config_store import get_config_path
 from services.settings import get_settings
+from services.postgres_service import pg_connection
 from mstr_herald.connection import create_connection
 
 
@@ -59,13 +60,25 @@ def _check_config_file() -> str:
     return f"{path} ({path.stat().st_size} bytes)"
 
 
+def _check_postgres() -> str:
+    with pg_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+    return "Connected"
+
+
 def collect_health_checks() -> List[HealthCheck]:
+    settings = get_settings()
     checks: Iterable[tuple[str, Callable[[], str]]] = (
         ("MicroStrategy connection", _check_microstrategy),
         ("Redis connection", _check_redis),
         ("Dossier config file", _check_config_file),
     )
-    return [_check(name, fn) for name, fn in checks]
+    results = [_check(name, fn) for name, fn in checks]
+    if settings.pg_database:
+        results.append(_check("PostgreSQL connection", _check_postgres))
+    return results
 
 
 def render_health_page() -> str:

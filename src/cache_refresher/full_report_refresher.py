@@ -3,7 +3,13 @@ from datetime import datetime
 from typing import Any, Dict, Iterable, Optional
 
 from services import cache_service
-from services.config_store import CACHE_POLICY_DAILY, load_config, resolve_cache_policy
+from services.config_store import (
+    CACHE_POLICY_DAILY,
+    DATA_POLICY_POSTGRESQL,
+    load_config,
+    resolve_cache_policy,
+    resolve_data_policy,
+)
 from services.dataframe_tools import normalise_agency_code_columns, normalise_columns
 from services.postgres_service import fetch_table_dataframe, parse_table_reference
 from mstr_herald.connection import create_connection
@@ -66,7 +72,12 @@ def refresh_full_reports(report_names: Optional[Iterable[str]] = None) -> Dict[s
     try:
         for report_name, cfg in to_process.items():
             try:
-                pg_ref = parse_table_reference(cfg.get("postgres_table"))
+                data_policy = resolve_data_policy(cfg)
+                pg_ref = None
+                if data_policy == DATA_POLICY_POSTGRESQL:
+                    pg_ref = parse_table_reference(cfg.get("postgres_table"))
+                    if not pg_ref:
+                        raise ValueError("postgres_table must be defined for Postgres-backed reports")
             except ValueError as exc:
                 result["errors"].setdefault(report_name, []).append(str(exc))
                 continue
@@ -96,6 +107,7 @@ def refresh_full_reports(report_names: Optional[Iterable[str]] = None) -> Dict[s
                 "refreshed_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
                 "info_types": {},
                 "cache_policy": CACHE_POLICY_DAILY,
+                "data_policy": data_policy,
             }
             errors_for_report: list[str] = []
 
