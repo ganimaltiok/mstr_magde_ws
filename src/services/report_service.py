@@ -15,6 +15,7 @@ from services.dataframe_tools import (
     normalise_agency_code_columns,
     normalise_columns,
 )
+from services.postgres_service import fetch_table_dataframe, parse_table_reference
 from mstr_herald.connection import create_connection
 from mstr_herald.filter_utils import apply_filters
 from mstr_herald.reports import fetch_report_dataframe
@@ -79,6 +80,11 @@ def _prepare_dataframe(df: pd.DataFrame, filters: Dict[str, Any], agency_code: O
 
 
 def _fetch_remote(report_name: str, cfg: Dict[str, Any], info_type: str, filters: Dict[str, Any]) -> pd.DataFrame:
+    pg_ref = parse_table_reference(cfg.get("postgres_table"))
+    if pg_ref:
+        logger.info("%s: Fetching data from Postgres table %s", report_name, cfg.get("postgres_table"))
+        return fetch_table_dataframe(pg_ref)
+
     conn = create_connection()
     try:
         return fetch_report_dataframe(conn, report_name, cfg, filters, info_type)
@@ -90,6 +96,10 @@ def _fetch_remote(report_name: str, cfg: Dict[str, Any], info_type: str, filters
 
 
 def _validate_info_type(cfg: Dict[str, Any], info_type: str) -> None:
+    if cfg.get("postgres_table"):
+        if info_type != "summary":
+            raise UnsupportedInfoTypeError("Postgres-backed reports only support info_type='summary'.")
+        return
     viz_keys = cfg.get("viz_keys") or {}
     if info_type not in viz_keys or not viz_keys[info_type]:
         raise UnsupportedInfoTypeError(f"Visualization type '{info_type}' is not configured.")
@@ -179,6 +189,7 @@ def list_reports_summary() -> Dict[str, Any]:
                 "is_cached": policy == CACHE_POLICY_DAILY,
                 "requires_agency": "agency_name" in (cfg.get("filters") or {}),
                 "available_filters": sorted((cfg.get("filters") or {}).keys()),
+                "postgres_table": cfg.get("postgres_table"),
             }
         )
 

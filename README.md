@@ -7,6 +7,7 @@ MicroStrategy Herald is a Flask-based REST service that turns MicroStrategy doss
 - Modern `/api/v3` endpoints with consistent JSON payloads
 - Flexible filtering, pagination, and per-agency data slicing
 - Redis-backed daily cache snapshots with rich metadata
+- Optional Postgres-backed datasets that hydrate Redis directly from `schema.table`
 - Admin console for dossier configuration plus one-click cache refresh
 - Helper HTTP endpoints and CLI scripts for cron-friendly cache refreshes
 - Docker and Systemd deployment recipes
@@ -59,6 +60,7 @@ All dossier definitions live in `src/config/dossiers.yaml`. Key fields:
 - `viz_keys`: Maps logical info types (e.g. `summary`, `detail`) to dossier visualization keys. Only non-null entries are cached.
 - `filters`: Dictionary of filter keys. Specify `agency_name` when the dossier requires an agency selection.
 - `cache_policy`: Either `none` (always live) or `daily` (cacheable).
+- `postgres_table`: Optional `schema.table` identifier; when present the report pulls data from Postgres instead of MicroStrategy.
 
 The admin UI at `/admin/edit` lets you edit these values, view the latest cache metadata, and trigger manual refreshes.
 
@@ -94,6 +96,7 @@ List configured dossiers with their cache policy, available filters, and whether
 | `/refresh` | POST/GET | Refreshes all reports with `cache_policy = daily`. Returns a summary with refreshed metadata, skipped items, and errors. |
 | `/refresh/<report_name>` | POST/GET | Refresh a single report. Response includes the refreshed metadata (`meta`) or error details. |
 | `/refresh/meta/<report_name>` | GET | Retrieve cached metadata without triggering a refresh. Useful for diagnostics. |
+| `/admin/log` | GET | Live table of recent `/api/v3/...` requests with JSON preview popups. |
 
 Returned metadata includes the `refreshed_at` timestamp and per `info_type` row/column counts plus cache keys.
 
@@ -148,11 +151,13 @@ Both commands return the same metadata summary as the HTTP endpoints.
     │   ├── cache_service.py
     │   ├── config_store.py
     │   ├── dataframe_tools.py
+    │   ├── postgres_service.py
     │   ├── report_service.py
     │   └── settings.py
     └── web                        # Flask application & blueprints
         ├── app.py
         ├── errors.py
+        ├── logbook.py
         └── blueprints/
             ├── __init__.py
             ├── cache_admin.py
@@ -175,6 +180,13 @@ MSTR_BASE_URL=http://your-mstr-server:8080
 MSTR_USERNAME=your_username
 MSTR_PASSWORD=your_password
 MSTR_PROJECT=your_project
+
+# Postgres (optional)
+PG_HOST=postgres
+PG_PORT=5432
+PG_DATABASE=your_database
+PG_USER=your_user
+PG_PASSWORD=your_password
 ```
 
 ## Deployment

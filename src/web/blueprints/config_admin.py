@@ -53,6 +53,7 @@ def _generate_edit_rows(config: Dict[str, Any]) -> str:
         cfg = cfg or {}
         filters = cfg.get("filters") or {}
         viz_keys = cfg.get("viz_keys") or {}
+        postgres_table = cfg.get("postgres_table") or ""
 
         def esc(value: Any) -> str:
             return html.escape("" if value is None else str(value), quote=True)
@@ -79,18 +80,21 @@ def _generate_edit_rows(config: Dict[str, Any]) -> str:
 
         rows.append(
             "<tr>"
-            f"<td><input value='{esc(report_name)}'></td>"
-            f"<td><input value='{esc(cfg.get('cube_id'))}'></td>"
-            f"<td><input value='{esc(cfg.get('dossier_id'))}'></td>"
-            f"<td><select>{''.join(options)}</select></td>"
-            f"<td><input value='{esc(filters.get('agency_name'))}'></td>"
-            f"<td><input value='{esc(viz_keys.get('summary'))}'></td>"
-            f"<td><input value='{esc(viz_keys.get('detail'))}'></td>"
-            f"<td>"
+            f"<td><input data-field='report_name' value='{esc(report_name)}'></td>"
+            f"<td><input data-field='cube_id' value='{esc(cfg.get('cube_id'))}'></td>"
+            f"<td><input data-field='dossier_id' value='{esc(cfg.get('dossier_id'))}'></td>"
+            f"<td><input data-field='postgres_table' placeholder='schema.table' value='{esc(postgres_table)}'></td>"
+            f"<td><select data-field='cache_policy'>{''.join(options)}</select></td>"
+            f"<td><input data-field='agency_name' value='{esc(filters.get('agency_name'))}'></td>"
+            f"<td><input data-field='summary_viz' value='{esc(viz_keys.get('summary'))}'></td>"
+            f"<td><input data-field='detail_viz' value='{esc(viz_keys.get('detail'))}'></td>"
+            f"<td class='status-cell'>"
             f"  <div class='cache-status' data-report='{esc(report_name)}' data-meta='{meta_json}' data-error='{esc(meta_error)}'>"
             f"    <div class='status-text'>{html.escape(status_text)}</div>"
-            f"    <button type='button' class='refresh-btn'>Refresh Cache</button>"
             f"  </div>"
+            f"</td>"
+            f"<td class='actions-cell'>"
+            f"  <button type='button' class='refresh-btn'>Refresh Cache</button>"
             f"</td>"
             "</tr>"
         )
@@ -114,11 +118,12 @@ def edit_dossiers() -> Response:
         th {{ background: #f0f0f0; }}
         input, select {{ width: 100%; box-sizing: border-box; }}
         button {{ margin-top: 10px; padding: 6px 12px; }}
-        .cache-status button {{ margin-top: 4px; }}
         #msg {{ margin-top:10px; color: green; }}
         .cache-status {{ display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }}
         .cache-status .status-text {{ font-size: 0.85em; color: #555; }}
         .actions {{ margin-top: 12px; display: flex; gap: 10px; }}
+        .actions-cell {{ text-align: center; }}
+        .actions-cell .refresh-btn {{ margin-top: 0; padding: 6px 12px; }}
       </style>
       <script>
         const CACHE_POLICY_NONE = "{CACHE_POLICY_NONE}";
@@ -179,7 +184,8 @@ def edit_dossiers() -> Response:
         }}
 
         async function refreshReport(reportName, button) {{
-          const statusBox = button.closest('.cache-status');
+          const row = button.closest('tr');
+          const statusBox = row ? row.querySelector('.cache-status') : null;
           const statusTextEl = statusBox ? statusBox.querySelector('.status-text') : null;
           const originalLabel = button.textContent;
           button.disabled = true;
@@ -264,17 +270,23 @@ def edit_dossiers() -> Response:
           const rows = document.querySelectorAll('tbody tr');
           const payload = {{}};
           rows.forEach(row => {{
-            const cells = row.querySelectorAll('input,select');
-            const reportName = cells[0].value.trim();
+            const data = {{}};
+            row.querySelectorAll('[data-field]').forEach(input => {{
+              const key = input.dataset.field;
+              if (!key) return;
+              data[key] = (input.value || '').trim();
+            }});
+            const reportName = data.report_name;
             if (!reportName) return;
             payload[reportName] = {{
-              cube_id: cells[1].value.trim() || null,
-              dossier_id: cells[2].value.trim() || null,
-              cache_policy: cells[3].value || CACHE_POLICY_NONE,
-              filters: {{ agency_name: cells[4].value.trim() || null }},
+              cube_id: data.cube_id || null,
+              dossier_id: data.dossier_id || null,
+              postgres_table: data.postgres_table || null,
+              cache_policy: (data.cache_policy || CACHE_POLICY_NONE),
+              filters: {{ agency_name: data.agency_name || null }},
               viz_keys: {{
-                summary: cells[5].value.trim() || null,
-                detail: cells[6].value.trim() || null
+                summary: data.summary_viz || null,
+                detail: data.detail_viz || null
               }}
             }};
           }});
@@ -299,23 +311,26 @@ def edit_dossiers() -> Response:
         function addRow() {{
           const template = `
             <tr>
-              <td><input></td>
-              <td><input></td>
-              <td><input></td>
+              <td><input data-field='report_name'></td>
+              <td><input data-field='cube_id'></td>
+              <td><input data-field='dossier_id'></td>
+              <td><input data-field='postgres_table' placeholder='schema.table'></td>
               <td>
-                <select>
+                <select data-field='cache_policy'>
                   <option value='{CACHE_POLICY_NONE}' selected>No Cache</option>
                   <option value='{CACHE_POLICY_DAILY}'>Daily (refresh via job)</option>
                 </select>
               </td>
-              <td><input></td>
-              <td><input></td>
-              <td><input></td>
-              <td>
+              <td><input data-field='agency_name'></td>
+              <td><input data-field='summary_viz'></td>
+              <td><input data-field='detail_viz'></td>
+              <td class="status-cell">
                 <div class="cache-status" data-report="">
                   <div class="status-text">Never cached</div>
-                  <button type="button" class="refresh-btn">Refresh Cache</button>
                 </div>
+              </td>
+              <td class="actions-cell">
+                <button type="button" class="refresh-btn">Refresh Cache</button>
               </td>
             </tr>`;
           document.querySelector('tbody').insertAdjacentHTML('beforeend', template);
@@ -324,9 +339,14 @@ def edit_dossiers() -> Response:
         document.addEventListener('click', (event) => {{
           const btn = event.target.closest('.refresh-btn');
           if (!btn) return;
-          const statusBox = btn.closest('.cache-status');
           const row = btn.closest('tr');
-          const input = row ? row.querySelector('td:first-child input') : null;
+          if (!row) return;
+          const statusBox = row.querySelector('.cache-status');
+          if (!statusBox) {{
+            showMessage("Cache status unavailable for this row.", "red");
+            return;
+          }}
+          const input = row.querySelector('[data-field="report_name"]');
           const datasetName = statusBox && statusBox.dataset.report ? statusBox.dataset.report.trim() : "";
           const inputName = input ? input.value.trim() : "";
           const reportName = datasetName || inputName;
@@ -369,11 +389,13 @@ def edit_dossiers() -> Response:
             <th>Report Name</th>
             <th>Cube ID</th>
             <th>Dossier ID</th>
+            <th>Postgres Table</th>
             <th>cache_policy</th>
             <th>Agency Filter Key</th>
             <th>Summary Viz Key</th>
             <th>Detail Viz Key</th>
             <th>Cache Status</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -541,6 +563,7 @@ def view_config() -> Response:
           <label>Report Name:</label><input name='report_name'>
           <label>Dossier ID:</label><input name='dossier_id'>
           <label>Cube ID:</label><input name='cube_id'>
+          <label>Postgres Table (schema.table):</label><input name='postgres_table'>
           <label>Summary Viz Key:</label><input name='viz_summary'>
           <label>Detail Viz Key:</label><input name='viz_detail'>
           <label>Agency Filter Key (acente_kodu):</label><input name='filter_agency_name'>
@@ -572,14 +595,18 @@ def add_or_update_config():
     data = request.form
 
     report_name = data.get("report_name")
-    dossier_id = data.get("dossier_id")
-    cube_id = data.get("cube_id")
+    dossier_id = data.get("dossier_id") or None
+    cube_id = data.get("cube_id") or None
+    postgres_table = data.get("postgres_table") or None
     cache_policy = (data.get("cache_policy") or CACHE_POLICY_NONE).lower().strip()
     if cache_policy not in {CACHE_POLICY_NONE, CACHE_POLICY_DAILY}:
         cache_policy = CACHE_POLICY_NONE
 
-    if not all([report_name, dossier_id, cube_id]):
-        return jsonify({"error": "report_name, dossier_id and cube_id are required"}), 400
+    if not report_name:
+        return jsonify({"error": "report_name is required"}), 400
+
+    if not postgres_table and not all([dossier_id, cube_id]):
+        return jsonify({"error": "dossier_id and cube_id are required when postgres_table is not set"}), 400
 
     summary_viz = data.get("viz_summary") or None
     detail_viz = data.get("viz_detail") or None
@@ -589,6 +616,7 @@ def add_or_update_config():
         "cube_id": cube_id,
         "dossier_id": dossier_id,
         "cache_policy": cache_policy,
+        "postgres_table": postgres_table,
         "filters": {
             "agency_name": filter_agency
         },

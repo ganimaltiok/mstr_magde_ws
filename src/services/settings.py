@@ -26,6 +26,11 @@ class Settings:
     redis_db: int
     refresh_log_path: Path
     config_path: Path
+    pg_host: str
+    pg_port: int
+    pg_database: str
+    pg_user: str
+    pg_password: str
 
 
 def _resolve_path(env_value: str | None, default: Path) -> Path:
@@ -73,6 +78,11 @@ def get_settings() -> Settings:
         redis_db=_parse_int(os.getenv("REDIS_DB"), 0, "REDIS_DB"),
         refresh_log_path=_resolve_path(os.getenv("REFRESH_LOG_PATH"), refresh_log_default),
         config_path=_resolve_path(os.getenv("MSTR_CONFIG_PATH"), config_default),
+        pg_host=os.getenv("PG_HOST", "localhost"),
+        pg_port=_parse_int(os.getenv("PG_PORT"), 5432, "PG_PORT"),
+        pg_database=os.getenv("PG_DATABASE", ""),
+        pg_user=os.getenv("PG_USER", ""),
+        pg_password=os.getenv("PG_PASSWORD", ""),
     )
 
 
