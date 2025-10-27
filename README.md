@@ -1,74 +1,75 @@
-# MSTR Herald API
+# MSTR Herald API v2.0
 
-MicroStrategy Herald is a Flask-based REST service that turns MicroStrategy dossiers into clean, paginated JSON responses, optionally backed by Redis caching. The project now focuses on the v3 API and provides tooling to manage cache refreshes from the browser, CLI, or automation jobs.
+Flask REST API that provides unified access to MicroStrategy dossiers, MSSQL, and PostgreSQL data sources with intelligent nginx-based caching.
 
-## Features
+## Architecture Overview
 
-- Modern `/api/v3` endpoints with consistent JSON payloads
-- Flexible filtering, pagination, and per-agency data slicing
-- Redis-backed daily cache snapshots with rich metadata
-- Dual data policies: serve reports from MicroStrategy or PostgreSQL tables/views
-- Optional Postgres-backed datasets that hydrate Redis directly from `schema.table`
-- Admin console for dossier configuration plus one-click cache refresh
-- Helper HTTP endpoints and CLI scripts for cron-friendly cache refreshes
-- Docker and Systemd deployment recipes
+### 6 Data Source Behaviors
+
+Each endpoint can be configured with one of 6 behaviors:
+
+| Behavior | Source | Caching | Cache Duration | Description |
+|----------|--------|---------|----------------|-------------|
+| `livesql` | MSSQL | None | N/A | Real-time MSSQL queries, no cache |
+| `cachesql` | MSSQL | nginx | 10 minutes | Cached MSSQL data, auto-refresh |
+| `livepg` | PostgreSQL | None | N/A | Real-time PostgreSQL queries, no cache |
+| `cachepg` | PostgreSQL | nginx | 10 minutes | Cached PostgreSQL data, auto-refresh |
+| `livemstr` | MicroStrategy | None | N/A | Live MSTR reports with full filter support |
+| `cachemstr` | MicroStrategy | nginx | Until 7 AM Istanbul | Daily cached MSTR reports |
 
 ## Quick Start
 
-### Using Docker
+### Prerequisites
+
+- Python 3.9+
+- MSSQL Server (for SQL behaviors)
+- PostgreSQL (for PG behaviors)
+- MicroStrategy Library Server (for MSTR behaviors)
+- Nginx with cache module
+
+### Installation
 
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd mstr_magde_ws
+# Clone repository
+cd /home/administrator/venus_v2
 
-# Configure environment variables
-cp .env.example .env
-# Edit .env with your MicroStrategy credentials
-
-# Start with Docker Compose
-docker-compose up -d
-```
-
-### Manual Installation
-
-```bash
-# Clone the repository
-git clone <repository-url>
-cd mstr_magde_ws
-
-# Create and activate virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Configure environment variables
+# Configure environment
 cp .env.example .env
-# Edit .env with your MicroStrategy credentials
+# Edit .env with your credentials
 
-# Run the application
-cd src
-python app.py
+# Create cache directories
+sudo mkdir -p /var/cache/nginx/shortcache
+sudo mkdir -p /var/cache/nginx/dailycache
+sudo chown -R administrator:administrator /var/cache/nginx/
+
+# Run application
+python src/app.py
 ```
 
-## Configuration
+### Nginx Setup
 
-All dossier definitions live in `src/config/dossiers.yaml`. Key fields:
+```bash
+# Copy nginx config
+sudo cp nginx/mstr_herald.conf /etc/nginx/sites-available/
+sudo ln -s /etc/nginx/sites-available/mstr_herald.conf /etc/nginx/sites-enabled/
 
-- `cube_id`, `dossier_id`: MicroStrategy identifiers.
-- `data_policy`: Either `microstrategy` (default) or `postgresql`.
-- `viz_keys`: Maps logical info types (e.g. `summary`, `detail`) to dossier visualization keys. Only used when `data_policy = microstrategy`.
-- `filters`: Dictionary of filter keys. Specify `agency_name` when the dossier requires an agency selection (MicroStrategy only).
-- `cache_policy`: Either `none` (always live) or `daily` (cacheable).
-- `postgres_table`: Optional `schema.table` identifier used when `data_policy = postgresql` to load data straight from the database.
+# Test and reload
+sudo nginx -t
+sudo systemctl reload nginx
+```
 
-The admin UI at `/admin/edit` lets you edit these values, view the latest cache metadata, and trigger manual refreshes.
+## API Endpoints
 
-## API (v3)
+### v3 REST API (Backward Compatible)
 
-### GET `/api/v3/report/<report_name>/agency/<agency_code>`
+#### GET `/api/v3/report/<report_name>/agency/<agency_code>`
 
 Fetch report data filtered by agency.
 
@@ -81,11 +82,11 @@ Fetch report data filtered by agency.
 
 Response highlights: `data`, pagination metadata, `data_refresh_time`, and cache details (`is_cached`, `cache_hit`, `cache_policy`).
 
-### GET `/api/v3/report/<report_name>`
+#### GET `/api/v3/report/<report_name>`
 
 Fetch report data without agency filtering. Works only for dossiers that do **not** require `agency_name`. Supports the same query parameters as the agency endpoint.
 
-### GET `/api/v3/reports`
+#### GET `/api/v3/reports`
 
 List configured dossiers with their cache policy, available filters, and whether agency filtering is required.
 

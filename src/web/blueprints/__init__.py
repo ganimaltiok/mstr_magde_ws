@@ -2,18 +2,28 @@ from __future__ import annotations
 
 from flask import Flask
 
-from web.blueprints.cache_admin import cache_bp
-from web.blueprints.config_admin import config_bp
-from web.blueprints.logs import logs_bp
-from web.blueprints.reports import reports_bp
 
-
-def register_blueprints(app: Flask) -> None:
-    app.register_blueprint(reports_bp, url_prefix="/api/v3")
-    app.register_blueprint(cache_bp)
-    app.register_blueprint(config_bp)
-    app.register_blueprint(logs_bp)
-
-
-__all__ = ["register_blueprints"]
+def register_blueprints(app: Flask):
+    """Register all blueprints."""
+    
+    # v3 API (backward compatible)
+    from web.blueprints.v3_api import v3_bp
+    app.register_blueprint(v3_bp)
+    
+    # Admin interface
+    from web.blueprints.admin_dashboard import admin_dashboard_bp
+    app.register_blueprint(admin_dashboard_bp)
+    
+    from web.blueprints.admin_endpoints import admin_endpoints_bp
+    app.register_blueprint(admin_endpoints_bp)
+    
+    from web.blueprints.admin_cache import admin_cache_bp
+    app.register_blueprint(admin_cache_bp)
+    
+    from web.blueprints.admin_mstr import admin_mstr_bp
+    app.register_blueprint(admin_mstr_bp)
+    
+    # Health checks
+    from web.blueprints.health import health_bp
+    app.register_blueprint(health_bp)
 

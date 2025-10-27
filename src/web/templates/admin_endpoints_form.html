@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ 'Edit' if mode == 'edit' else 'Create' }} Endpoint - MSTR Herald</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; background: #f5f5f5; }
+        .header { background: #2c3e50; color: white; padding: 20px; }
+        .header h1 { font-size: 24px; }
+        .header nav { margin-top: 10px; }
+        .header nav a { color: #ecf0f1; text-decoration: none; margin-right: 20px; }
+        .container { max-width: 900px; margin: 20px auto; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-weight: 600; margin-bottom: 5px; font-size: 14px; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+        .form-group textarea { resize: vertical; min-height: 60px; }
+        .form-group small { display: block; color: #666; font-size: 12px; margin-top: 3px; }
+        .config-section { display: none; background: #f8f9fa; padding: 15px; border-radius: 6px; margin-top: 10px; }
+        .config-section.active { display: block; }
+        .config-section h3 { font-size: 16px; margin-bottom: 15px; color: #495057; }
+        .filter-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .filter-table th { background: #e9ecef; padding: 8px; text-align: left; font-size: 13px; }
+        .filter-table td { padding: 8px; border-bottom: 1px solid #dee2e6; }
+        .filter-table input { width: 100%; padding: 6px; font-size: 13px; }
+        .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; margin-right: 10px; }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn:hover { opacity: 0.9; }
+        .actions { margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>{{ 'Edit' if mode == 'edit' else 'Create' }} Endpoint</h1>
+        <nav>
+            <a href="/admin/dashboard">Dashboard</a>
+            <a href="/admin/endpoints">Endpoints</a>
+        </nav>
+    </div>
+
+    <div class="container">
+        <form method="POST">
+            <!-- Common Fields -->
+            <div class="form-group">
+                <label for="endpoint_name">Endpoint Name*</label>
+                <input type="text" id="endpoint_name" name="endpoint_name" 
+                       value="{{ endpoint.name if endpoint else '' }}" 
+                       {{ 'readonly' if mode == 'edit' else '' }} required>
+                <small>URL slug (e.g., "sales_summary" → /api/v3/report/sales_summary)</small>
+            </div>
+
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" name="description">{{ endpoint.description if endpoint else '' }}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="behavior">Behavior*</label>
+                <select id="behavior" name="behavior" required onchange="toggleConfigSections()">
+                    <option value="">-- Select Behavior --</option>
+                    <option value="livesql" {{ 'selected' if endpoint and endpoint.behavior == 'livesql' else '' }}>Live SQL (MSSQL)</option>
+                    <option value="cachesql" {{ 'selected' if endpoint and endpoint.behavior == 'cachesql' else '' }}>Cached SQL (MSSQL, 10min)</option>
+                    <option value="livepg" {{ 'selected' if endpoint and endpoint.behavior == 'livepg' else '' }}>Live PostgreSQL</option>
+                    <option value="cachepg" {{ 'selected' if endpoint and endpoint.behavior == 'cachepg' else '' }}>Cached PostgreSQL (10min)</option>
+                    <option value="livemstr" {{ 'selected' if endpoint and endpoint.behavior == 'livemstr' else '' }}>Live MicroStrategy</option>
+                    <option value="cachemstr" {{ 'selected' if endpoint and endpoint.behavior == 'cachemstr' else '' }}>Cached MicroStrategy (daily 7AM)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="per_page">Items Per Page</label>
+                <input type="number" id="per_page" name="per_page" 
+                       value="{{ endpoint.per_page if endpoint else 100 }}" min="1" max="10000">
+            </div>
+
+            <!-- SQL Config Section -->
+            <div id="sql-config" class="config-section">
+                <h3>MSSQL Configuration</h3>
+                <div class="form-group">
+                    <label for="mssql_schema">Schema*</label>
+                    <input type="text" id="mssql_schema" name="mssql_schema" 
+                           value="{{ endpoint.mssql.schema if endpoint and endpoint.mssql else 'dbo' }}">
+                </div>
+                <div class="form-group">
+                    <label for="mssql_table">Table Name*</label>
+                    <input type="text" id="mssql_table" name="mssql_table" 
+                           value="{{ endpoint.mssql.table if endpoint and endpoint.mssql else '' }}">
+                </div>
+            </div>
+
+            <!-- PostgreSQL Config Section -->
+            <div id="pg-config" class="config-section">
+                <h3>PostgreSQL Configuration</h3>
+                <div class="form-group">
+                    <label for="pg_schema">Schema*</label>
+                    <input type="text" id="pg_schema" name="pg_schema" 
+                           value="{{ endpoint.postgresql.schema if endpoint and endpoint.postgresql else 'public' }}">
+                </div>
+                <div class="form-group">
+                    <label for="pg_table">Table Name*</label>
+                    <input type="text" id="pg_table" name="pg_table" 
+                           value="{{ endpoint.postgresql.table if endpoint and endpoint.postgresql else '' }}">
+                </div>
+            </div>
+
+            <!-- MSTR Config Section -->
+            <div id="mstr-config" class="config-section">
+                <h3>MicroStrategy Configuration</h3>
+                <div class="form-group">
+                    <label for="dossier_id">Dossier ID*</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="dossier_id" name="dossier_id" 
+                               value="{{ endpoint.mstr.dossier_id if endpoint and endpoint.mstr else '' }}" 
+                               style="flex: 1;">
+                        <button type="button" class="btn btn-success" onclick="gatherMstrInfo()">Gather Info</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="cube_id">Cube ID (optional)</label>
+                    <input type="text" id="cube_id" name="cube_id" readonly
+                           value="{{ endpoint.mstr.cube_id if endpoint and endpoint.mstr else '' }}">
+                    <small>Auto-discovered from dossier</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="summary_viz_key">Summary Viz Key*</label>
+                    <input type="text" id="summary_viz_key" name="summary_viz_key" readonly
+                           value="{{ endpoint.mstr.viz_keys.summary if endpoint and endpoint.mstr else '' }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="detail_viz_key">Detail Viz Key</label>
+                    <input type="text" id="detail_viz_key" name="detail_viz_key" readonly
+                           value="{{ endpoint.mstr.viz_keys.detail if endpoint and endpoint.mstr else '' }}">
+                    <small>Optional - leave empty if no detail view</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Filter Mappings</label>
+                    <table class="filter-table" id="filter-mappings">
+                        <thead>
+                            <tr>
+                                <th>Query Param Name</th>
+                                <th>MSTR Filter Key</th>
+                                <th>Filter Name</th>
+                                <th style="width: 80px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if endpoint and endpoint.mstr and endpoint.mstr.filter_mappings %}
+                            {% for param, key in endpoint.mstr.filter_mappings.items() %}
+                            <tr>
+                                <td><input type="text" name="filter_param[]" value="{{ param }}"></td>
+                                <td><input type="text" name="filter_key[]" value="{{ key }}" readonly></td>
+                                <td><span>-</span></td>
+                                <td><button type="button" class="btn btn-secondary" onclick="this.closest('tr').remove()">Remove</button></td>
+                            </tr>
+                            {% endfor %}
+                            {% endif %}
+                        </tbody>
+                    </table>
+                    <button type="button" class="btn btn-secondary" onclick="addFilterRow()" style="margin-top: 10px;">Add Filter</button>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button type="submit" class="btn btn-primary">{{ 'Update' if mode == 'edit' else 'Create' }} Endpoint</button>
+                <a href="/admin/dashboard" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        function toggleConfigSections() {
+            const behavior = document.getElementById('behavior').value;
+            
+            // Hide all sections
+            document.querySelectorAll('.config-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // Show relevant section
+            if (behavior === 'livesql' || behavior === 'cachesql') {
+                document.getElementById('sql-config').classList.add('active');
+            } else if (behavior === 'livepg' || behavior === 'cachepg') {
+                document.getElementById('pg-config').classList.add('active');
+            } else if (behavior === 'livemstr' || behavior === 'cachemstr') {
+                document.getElementById('mstr-config').classList.add('active');
+            }
+        }
+
+        async function gatherMstrInfo() {
+            const dossierId = document.getElementById('dossier_id').value;
+            if (!dossierId) {
+                alert('Please enter Dossier ID first');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/admin/mstr/discover', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({dossier_id: dossierId})
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    alert('Error: ' + error.error);
+                    return;
+                }
+
+                const data = await response.json();
+
+                // Populate fields
+                document.getElementById('cube_id').value = data.cube_id || '';
+                document.getElementById('summary_viz_key').value = data.viz_keys.summary || '';
+                document.getElementById('detail_viz_key').value = data.viz_keys.detail || '';
+
+                // Clear and populate filter table
+                const tbody = document.querySelector('#filter-mappings tbody');
+                tbody.innerHTML = '';
+
+                data.filters.forEach(filter => {
+                    addFilterRow(filter.suggested_param_name, filter.key, filter.name);
+                });
+
+                alert('Dossier info gathered successfully!');
+            } catch (e) {
+                alert('Failed to gather info: ' + e.message);
+            }
+        }
+
+        function addFilterRow(param = '', key = '', name = '-') {
+            const tbody = document.querySelector('#filter-mappings tbody');
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><input type="text" name="filter_param[]" value="${param}"></td>
+                <td><input type="text" name="filter_key[]" value="${key}" readonly></td>
+                <td><span>${name}</span></td>
+                <td><button type="button" class="btn btn-secondary" onclick="this.closest('tr').remove()">Remove</button></td>
+            `;
+            tbody.appendChild(row);
+        }
+
+        // Initialize on page load
+        toggleConfigSections();
+    </script>
+</body>
+</html>

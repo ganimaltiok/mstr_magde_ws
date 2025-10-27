@@ -1,8 +1,51 @@
+# Python
 __pycache__/
-*.pyc
-*.pyo
-*.egg-info/
-.env
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
 
+# Flask
+instance/
+.webassets-cache
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
 *.log
-src/.DS_Store
+logs/
+
+# v1 Backup Files (created during migration)
+*.v1.backup
+src/config/dossiers.yaml.v1.backup
+requirements.txt.v1.backup
+
+# Nginx cache
+/var/cache/nginx/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Distribution
+dist/
+build/
+*.egg-info/

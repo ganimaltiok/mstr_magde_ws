@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MSTR Herald - Admin Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; background: #f5f5f5; }
+        .header { background: #2c3e50; color: white; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .header h1 { font-size: 24px; }
+        .header nav { margin-top: 10px; }
+        .header nav a { color: #ecf0f1; text-decoration: none; margin-right: 20px; }
+        .header nav a:hover { text-decoration: underline; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .health-panel { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .health-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 15px; }
+        .health-card { padding: 15px; border-radius: 6px; border-left: 4px solid #ccc; }
+        .health-card.ok { background: #d4edda; border-left-color: #28a745; }
+        .health-card.error { background: #f8d7da; border-left-color: #dc3545; }
+        .health-card.not_configured { background: #fff3cd; border-left-color: #ffc107; }
+        .health-card h3 { font-size: 14px; color: #666; margin-bottom: 8px; }
+        .health-card .status { font-weight: bold; font-size: 16px; }
+        .health-card .response-time { color: #28a745; font-size: 12px; margin-top: 5px; }
+        .cache-summary { background: #e7f3ff; padding: 15px; border-radius: 6px; margin-top: 15px; }
+        .cache-summary h3 { font-size: 14px; color: #0066cc; margin-bottom: 10px; }
+        .cache-summary .stats { display: flex; gap: 30px; }
+        .cache-summary .stat { font-size: 13px; }
+        .cache-summary .stat strong { display: block; font-size: 20px; color: #333; }
+        .endpoints-panel { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .endpoints-panel h2 { margin-bottom: 15px; font-size: 20px; }
+        .endpoints-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .endpoints-table th { background: #f8f9fa; text-align: left; padding: 12px; border-bottom: 2px solid #dee2e6; font-weight: 600; }
+        .endpoints-table td { padding: 12px; border-bottom: 1px solid #dee2e6; }
+        .endpoints-table tr:hover { background: #f8f9fa; }
+        .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+        .badge-livesql { background: #e3f2fd; color: #1976d2; }
+        .badge-cachesql { background: #e1f5fe; color: #0288d1; }
+        .badge-livepg { background: #f3e5f5; color: #7b1fa2; }
+        .badge-cachepg { background: #f3e5f5; color: #8e24aa; }
+        .badge-livemstr { background: #fff3e0; color: #f57c00; }
+        .badge-cachemstr { background: #ffe0b2; color: #e65100; }
+        .sample-url { font-family: 'Courier New', monospace; font-size: 11px; color: #666; }
+        .actions { display: flex; gap: 8px; }
+        .btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; text-decoration: none; display: inline-block; }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn:hover { opacity: 0.9; }
+        .add-endpoint-btn { float: right; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>MSTR Herald - Admin Dashboard</h1>
+        <nav>
+            <a href="/admin/dashboard">Dashboard</a>
+            <a href="/admin/endpoints">Endpoints</a>
+            <a href="/admin/cache">Cache Management</a>
+            <a href="/health">Health Check</a>
+        </nav>
+    </div>
+
+    <div class="container">
+        <!-- Health Status Panel -->
+        <div class="health-panel">
+            <h2>System Health</h2>
+            <div class="health-grid">
+                <div class="health-card {{ health_status.mssql.status }}">
+                    <h3>MSSQL Server</h3>
+                    <div class="status">{{ health_status.mssql.status|upper }}</div>
+                    {% if health_status.mssql.response_time_ms %}
+                    <div class="response-time">{{ "%.1f"|format(health_status.mssql.response_time_ms) }} ms</div>
+                    {% endif %}
+                    {% if health_status.mssql.error %}
+                    <div style="color: #dc3545; font-size: 11px; margin-top: 5px;">{{ health_status.mssql.error }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="health-card {{ health_status.postgresql.status }}">
+                    <h3>PostgreSQL DWH</h3>
+                    <div class="status">{{ health_status.postgresql.status|upper }}</div>
+                    {% if health_status.postgresql.response_time_ms %}
+                    <div class="response-time">{{ "%.1f"|format(health_status.postgresql.response_time_ms) }} ms</div>
+                    {% endif %}
+                    {% if health_status.postgresql.error %}
+                    <div style="color: #dc3545; font-size: 11px; margin-top: 5px;">{{ health_status.postgresql.error }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="health-card {{ health_status.microstrategy.status }}">
+                    <h3>MicroStrategy API</h3>
+                    <div class="status">{{ health_status.microstrategy.status|upper }}</div>
+                    {% if health_status.microstrategy.response_time_ms %}
+                    <div class="response-time">{{ "%.1f"|format(health_status.microstrategy.response_time_ms) }} ms</div>
+                    {% endif %}
+                    {% if health_status.microstrategy.error %}
+                    <div style="color: #dc3545; font-size: 11px; margin-top: 5px;">{{ health_status.microstrategy.error }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="health-card {{ health_status.nginx_cache.status }}">
+                    <h3>Nginx Cache</h3>
+                    <div class="status">{{ health_status.nginx_cache.status|upper }}</div>
+                    {% if health_status.nginx_cache.total_size %}
+                    <div class="response-time">{{ "%.1f"|format(health_status.nginx_cache.total_size / 1024 / 1024) }} MB</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="cache-summary">
+                <h3>Cache Statistics</h3>
+                <div class="stats">
+                    <div class="stat">
+                        <strong>{{ "%.1f"|format(cache_stats.total_size / 1024 / 1024) }} MB</strong>
+                        Total Size
+                    </div>
+                    <div class="stat">
+                        <strong>{{ cache_stats.total_files }}</strong>
+                        Total Files
+                    </div>
+                    <div class="stat">
+                        <strong>{{ "%.1f"|format(cache_stats.short_cache_size / 1024 / 1024) }} MB</strong>
+                        Short Cache (10min)
+                    </div>
+                    <div class="stat">
+                        <strong>{{ "%.1f"|format(cache_stats.daily_cache_size / 1024 / 1024) }} MB</strong>
+                        Daily Cache (7AM)
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Endpoints Panel -->
+        <div class="endpoints-panel">
+            <h2>
+                Endpoints
+                <a href="/admin/endpoints/create" class="btn btn-primary add-endpoint-btn">+ Add Endpoint</a>
+            </h2>
+            
+            <table class="endpoints-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Behavior</th>
+                        <th>Description</th>
+                        <th>Last Request</th>
+                        <th>Total Requests</th>
+                        <th>Avg Response</th>
+                        <th>Cache Hit Rate</th>
+                        <th>Sample URL</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for endpoint in endpoints %}
+                    <tr>
+                        <td><strong>{{ endpoint.name }}</strong></td>
+                        <td><span class="badge badge-{{ endpoint.behavior }}">{{ endpoint.behavior }}</span></td>
+                        <td>{{ endpoint.description }}</td>
+                        <td>
+                            {% if endpoint.last_request %}
+                            {{ endpoint.last_request.strftime('%Y-%m-%d %H:%M') }}
+                            {% else %}
+                            <span style="color: #999;">Never</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ endpoint.total_requests }}</td>
+                        <td>{{ "%.0f"|format(endpoint.avg_response_time_ms) }} ms</td>
+                        <td>
+                            {% if endpoint.is_cached %}
+                            {{ "%.1f"|format(endpoint.cache_hit_rate) }}%
+                            {% else %}
+                            <span style="color: #999;">N/A</span>
+                            {% endif %}
+                        </td>
+                        <td class="sample-url">/api/v3/report/{{ endpoint.name }}/agency/100100</td>
+                        <td class="actions">
+                            <a href="/admin/endpoints/edit/{{ endpoint.name }}" class="btn btn-secondary">Edit</a>
+                            <button onclick="clearEndpointCache('{{ endpoint.name }}')" class="btn btn-secondary">Clear Cache</button>
+                            <button onclick="deleteEndpoint('{{ endpoint.name }}')" class="btn btn-danger">Delete</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        async function clearEndpointCache(endpointName) {
+            if (!confirm(`Clear cache for endpoint "${endpointName}"?`)) return;
+            
+            const response = await fetch('/admin/cache/purge', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({target: 'endpoint', endpoint_name: endpointName})
+            });
+            
+            const result = await response.json();
+            alert(result.message || result.error);
+            location.reload();
+        }
+
+        async function deleteEndpoint(endpointName) {
+            if (!confirm(`Delete endpoint "${endpointName}"? This cannot be undone.`)) return;
+            
+            const response = await fetch(`/admin/endpoints/delete/${endpointName}`, {
+                method: 'POST'
+            });
+            
+            if (response.ok) {
+                alert('Endpoint deleted successfully');
+                location.reload();
+            } else {
+                const result = await response.json();
+                alert('Error: ' + result.error);
+            }
+        }
+    </script>
+</body>
+</html>

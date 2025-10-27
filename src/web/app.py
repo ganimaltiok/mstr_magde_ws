@@ -79,7 +79,7 @@ def create_app() -> Flask:
 
     @app.get("/ping")
     def ping():
-        return jsonify({"status": "ok"})
+        return jsonify({"status": "ok", "message": "MSTR Herald API is running"})
 
     @app.get("/health")
     def health_page() -> Response:

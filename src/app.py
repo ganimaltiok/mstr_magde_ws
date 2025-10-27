@@ -7,6 +7,7 @@ from sentry_sdk.integrations.flask import FlaskIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
 
 from web import create_app
+from services.settings import get_settings
 
 logging.basicConfig(
     level=logging.INFO,
@@ -60,7 +61,10 @@ _init_sentry()
 
 app = create_app()
 
-
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True, use_reloader=True)
+    settings = get_settings()
+    app.run(
+        host="0.0.0.0",
+        port=settings.PORT,
+        debug=settings.is_development,
+    )

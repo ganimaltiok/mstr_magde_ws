@@ -6,12 +6,11 @@ from functools import lru_cache
 from pathlib import Path
 
 import logging
-
 from dotenv import load_dotenv
 
-# Ensure environment variables from a local .env file are available everywhere,
-# including background jobs that import this module directly.
-load_dotenv()
+# Load .env from project root
+env_path = Path(__file__).parent.parent.parent / '.env'
+load_dotenv(dotenv_path=env_path)
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +30,37 @@ class Settings:
     pg_database: str
     pg_user: str
     pg_password: str
+
+    # Flask
+    FLASK_ENV: str
+    PORT: int
+    SECRET_KEY: str
+
+    # MSSQL
+    MSSQL_HOST: str
+    MSSQL_PORT: int
+    MSSQL_DATABASE: str
+    MSSQL_USER: str
+    MSSQL_PASSWORD: str
+    MSSQL_DRIVER: str
+
+    # MicroStrategy
+    MSTR_URL_API: str
+    MSTR_USERNAME: str
+    MSTR_PASSWORD: str
+    MSTR_PROJECT: str
+
+    # Nginx Cache
+    NGINX_CACHE_SHORT: Path
+    NGINX_CACHE_DAILY: Path
+
+    # Logging
+    LOG_LEVEL: str
+    LOG_FILE: str
+
+    # Sentry
+    SENTRY_DSN: str
+    SENTRY_ENVIRONMENT: str
 
 
 def _resolve_path(env_value: str | None, default: Path) -> Path:
@@ -83,6 +113,36 @@ def get_settings() -> Settings:
         pg_database=os.getenv("PG_DATABASE", ""),
         pg_user=os.getenv("PG_USER", ""),
         pg_password=os.getenv("PG_PASSWORD", ""),
+        # Flask
+        FLASK_ENV=os.getenv('FLASK_ENV', 'production'),
+        PORT=int(os.getenv('PORT', 9101)),
+        SECRET_KEY=os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production'),
+
+        # MSSQL
+        MSSQL_HOST=os.getenv('MSSQL_HOST'),
+        MSSQL_PORT=int(os.getenv('MSSQL_PORT', 1433)),
+        MSSQL_DATABASE=os.getenv('MSSQL_DATABASE'),
+        MSSQL_USER=os.getenv('MSSQL_USER'),
+        MSSQL_PASSWORD=os.getenv('MSSQL_PASSWORD'),
+        MSSQL_DRIVER=os.getenv('MSSQL_DRIVER', 'ODBC Driver 17 for SQL Server'),
+
+        # MicroStrategy
+        MSTR_URL_API=os.getenv('MSTR_URL_API'),
+        MSTR_USERNAME=os.getenv('MSTR_USERNAME'),
+        MSTR_PASSWORD=os.getenv('MSTR_PASSWORD'),
+        MSTR_PROJECT=os.getenv('MSTR_PROJECT'),
+
+        # Nginx Cache
+        NGINX_CACHE_SHORT=_resolve_path(os.getenv('NGINX_CACHE_SHORT', '/var/cache/nginx/shortcache'), base_dir / 'shortcache'),
+        NGINX_CACHE_DAILY=_resolve_path(os.getenv('NGINX_CACHE_DAILY', '/var/cache/nginx/dailycache'), base_dir / 'dailycache'),
+
+        # Logging
+        LOG_LEVEL=os.getenv('LOG_LEVEL', 'INFO'),
+        LOG_FILE=os.getenv('LOG_FILE', '/var/log/mstr_herald/app.log'),
+
+        # Sentry
+        SENTRY_DSN=os.getenv('SENTRY_DSN'),
+        SENTRY_ENVIRONMENT=os.getenv('SENTRY_ENVIRONMENT', 'dev'),
     )
 
 
