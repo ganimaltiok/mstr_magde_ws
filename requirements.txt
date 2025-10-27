@@ -3,6 +3,7 @@ flask-caching
 flask-swagger-ui
 gunicorn
 python-dotenv
+sentry-sdk[flask]
 requests
 redis
 pandas
