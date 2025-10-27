@@ -4,6 +4,8 @@ from flask_caching import Cache
 from dotenv import load_dotenv
 import os
 import logging
+import sentry_sdk
+from sentry_sdk.integrations.flask import FlaskIntegration
 
 from mstr_herald.connection import create_connection
 from mstr_herald.error_handlers import register_error_handlers
@@ -26,6 +28,20 @@ logging.getLogger("py.warnings").setLevel(logging.ERROR)
 load_dotenv()
 
 cache = Cache()
+
+SENTRY_DSN = os.getenv(
+    "SENTRY_DSN",
+    "https://a2edc7bea5dcb3c53628a115ab8f4712@o4510260666105856.ingest.de.sentry.io/4510260725022800",
+)
+
+
+if SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[FlaskIntegration()],
+        traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
+        environment=os.getenv("FLASK_ENV", "production"),
+    )
 
 
 def create_app():
