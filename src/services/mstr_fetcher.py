@@ -166,7 +166,18 @@ class MstrFetcher:
             
             def to_camel_case(text):
                 """Convert text to camelCase (first letter lowercase)."""
-                # Remove Turkish characters and special chars, convert to ASCII-friendly
+                # Convert Turkish characters to ASCII equivalents
+                turkish_map = {
+                    'ç': 'c', 'Ç': 'C',
+                    'ğ': 'g', 'Ğ': 'G',
+                    'ı': 'i', 'İ': 'I',
+                    'ö': 'o', 'Ö': 'O',
+                    'ş': 's', 'Ş': 'S',
+                    'ü': 'u', 'Ü': 'U'
+                }
+                for tr_char, ascii_char in turkish_map.items():
+                    text = text.replace(tr_char, ascii_char)
+                
                 text = text.strip()
                 # Split by spaces, hyphens, underscores
                 words = re.split(r'[\s\-_]+', text)
