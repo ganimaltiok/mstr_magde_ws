@@ -100,36 +100,33 @@ def get_report(report_name: str, agency_code: str = None):
         if result.has_error:
             response_data['info']['error'] = result.error
         
-        # Create response with cache headers
         logger.info(f"Building JSON response with {len(response_data['data'])} records...")
         
-        try:
-            response = make_response(jsonify(response_data))
-            logger.info(f"JSON response created successfully")
-        except Exception as json_error:
-            logger.error(f"Failed to create JSON response: {json_error}", exc_info=True)
-            # Try to identify problematic data
-            logger.error(f"Sample data record: {result.data[0] if result.data else 'empty'}")
-            raise
-        
         # Set cache headers based on behavior
+        cache_control = None
         if endpoint_config.cache_zone:
-            response.headers['X-Cache-Zone'] = endpoint_config.cache_zone
-            
             if endpoint_config.behavior in ['cachesql', 'cachepg']:
                 # 10 minute cache
-                response.headers['Cache-Control'] = 'public, max-age=600'
+                cache_control = 'public, max-age=600'
             elif endpoint_config.behavior == 'cachemstr':
                 # Cache until 7 AM Istanbul
                 next_7am = get_next_7am_istanbul()
                 now = datetime.now(istanbul_tz)
                 max_age = int((next_7am - now).total_seconds())
-                response.headers['Cache-Control'] = f'public, max-age={max_age}'
+                cache_control = f'public, max-age={max_age}'
         else:
             # No cache for live behaviors
-            response.headers['Cache-Control'] = 'no-store'
+            cache_control = 'no-store'
         
-        logger.info(f"Returning response with Cache-Control: {response.headers.get('Cache-Control')}")
+        logger.info(f"Returning response with Cache-Control: {cache_control}")
+        
+        # Return jsonify directly instead of make_response
+        response = jsonify(response_data)
+        if cache_control:
+            response.headers['Cache-Control'] = cache_control
+        if endpoint_config.cache_zone:
+            response.headers['X-Cache-Zone'] = endpoint_config.cache_zone
+        
         return response
     
     except Exception as e:
