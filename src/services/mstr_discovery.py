@@ -58,8 +58,12 @@ class MstrDiscoveryService:
     def _extract_cube_id(self, definition: Dict[str, Any]) -> Optional[str]:
         """Extract cube ID from dossier definition."""
         try:
+            # Check if we need to unwrap 'definition' key
+            if 'definition' in definition:
+                definition = definition['definition']
+            
             # Try datasets first (some dossiers have this)
-            datasets = definition.get('definition', {}).get('datasets', [])
+            datasets = definition.get('datasets', [])
             if datasets and len(datasets) > 0:
                 cube_id = datasets[0].get('id')
                 if cube_id:
@@ -83,7 +87,11 @@ class MstrDiscoveryService:
         viz_keys = {}
         
         try:
-            chapters = definition.get('definition', {}).get('chapters', [])
+            # Check if we need to unwrap 'definition' key
+            if 'definition' in definition:
+                definition = definition['definition']
+            
+            chapters = definition.get('chapters', [])
             all_vizs = []
             
             for chapter in chapters:
@@ -121,8 +129,12 @@ class MstrDiscoveryService:
         filters = []
         
         try:
-            # Filters are inside chapters, not at definition root
-            chapters = definition.get('definition', {}).get('chapters', [])
+            # Check if we need to unwrap 'definition' key
+            if 'definition' in definition:
+                definition = definition['definition']
+            
+            # Filters are inside chapters
+            chapters = definition.get('chapters', [])
             
             for chapter in chapters:
                 chapter_filters = chapter.get('filters', [])
