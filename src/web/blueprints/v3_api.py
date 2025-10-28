@@ -122,6 +122,13 @@ def get_report(report_name: str, agency_code: str = None):
     
     except Exception as e:
         logger.error(f"Unexpected error in v3 API: {e}", exc_info=True)
+        
+        # Safely convert exception to string (handle binary data)
+        try:
+            error_message = str(e)
+        except UnicodeDecodeError:
+            error_message = repr(e)
+        
         return jsonify({
             "data": [],
             "pagination": {
@@ -137,7 +144,7 @@ def get_report(report_name: str, agency_code: str = None):
                 "refreshed_at": None,
                 "error": {
                     "type": "InternalServerError",
-                    "message": str(e),
+                    "message": error_message,
                     "timestamp": datetime.now(pytz.timezone('Europe/Istanbul')).isoformat()
                 }
             }
