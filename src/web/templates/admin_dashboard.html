@@ -206,7 +206,14 @@
         async function clearAllCache() {
             if (!confirm('Clear ALL cache (both short and daily cache)?\n\nThis will clear cached data for all endpoints.')) return;
             
+            const button = event.target;
+            const originalText = button.textContent;
+            button.disabled = true;
+            button.textContent = 'Clearing...';
+            
             try {
+                console.log('Sending cache purge request...');
+                
                 const response = await fetch('/admin/cache/purge', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
@@ -214,15 +221,43 @@
                 });
                 
                 const result = await response.json();
+                console.log('Cache purge response:', result);
                 
                 if (response.ok) {
-                    alert(result.message || 'All cache cleared successfully');
+                    // Show detailed message based on status
+                    let message = result.message || 'Cache operation completed';
+                    
+                    if (result.cleared_paths) {
+                        message += '\n\nCleared paths:\n' + result.cleared_paths.join('\n');
+                    }
+                    
+                    if (result.errors && result.errors.length > 0) {
+                        message += '\n\nErrors:\n' + result.errors.join('\n');
+                    }
+                    
+                    if (result.status === 'warning') {
+                        alert('⚠️ Partial Success\n\n' + message);
+                    } else {
+                        alert('✅ Success\n\n' + message);
+                    }
+                    
                     location.reload();
                 } else {
-                    alert('Error: ' + (result.error || 'Failed to clear cache'));
+                    let errorMsg = result.error || result.message || 'Failed to clear cache';
+                    
+                    if (result.errors && result.errors.length > 0) {
+                        errorMsg += '\n\nDetails:\n' + result.errors.join('\n');
+                    }
+                    
+                    console.error('Cache purge error:', result);
+                    alert('❌ Error\n\n' + errorMsg);
                 }
             } catch (e) {
-                alert('Error: ' + e.message);
+                console.error('Cache purge exception:', e);
+                alert('❌ Error\n\n' + e.message);
+            } finally {
+                button.disabled = false;
+                button.textContent = originalText;
             }
         }
 

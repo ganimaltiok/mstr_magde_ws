@@ -36,17 +36,28 @@ def purge_cache():
         data = request.get_json()
         target = data.get('target')
         
+        logger.info(f"Cache purge request received: target={target}")
+        
         if target != 'all':
+            logger.warning(f"Invalid purge target: {target}")
             return jsonify({'error': 'Only "all" target is supported'}), 400
         
         cache_manager = get_cache_manager()
         result = cache_manager.purge_all()
         
-        return jsonify(result)
+        logger.info(f"Cache purge result: {result}")
+        
+        # Return appropriate HTTP status based on result
+        if result.get('status') == 'success':
+            return jsonify(result), 200
+        elif result.get('status') == 'warning':
+            return jsonify(result), 200  # Partial success is still OK
+        else:
+            return jsonify(result), 500
     
     except Exception as e:
-        logger.error(f"Cache purge failed: {e}")
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Cache purge exception: {e}", exc_info=True)
+        return jsonify({'error': str(e), 'status': 'error'}), 500
 
 
 @admin_cache_bp.route('/stats')

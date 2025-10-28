@@ -26,52 +26,125 @@ class CacheManager:
             {'status': 'success', 'message': str, 'purged_bytes': int}
         """
         total_bytes = 0
+        cleared_paths = []
+        errors = []
+        
+        logger.info("Starting cache purge operation...")
         
         try:
             # First try to get size (may fail due to permissions)
             for cache_path in self.cache_paths:
                 if cache_path.exists():
                     try:
-                        total_bytes += self._get_directory_size(cache_path)
+                        size = self._get_directory_size(cache_path)
+                        total_bytes += size
+                        logger.info(f"Cache path {cache_path}: {self._format_bytes(size)}")
                     except PermissionError:
-                        logger.warning(f"Cannot read cache size for {cache_path}")
+                        logger.warning(f"Cannot read cache size for {cache_path} (permission denied)")
+                else:
+                    logger.info(f"Cache path does not exist: {cache_path}")
             
             # Clear cache directory contents (not the directory itself)
             for cache_path in self.cache_paths:
-                if cache_path.exists():
+                if not cache_path.exists():
+                    logger.info(f"Skipping non-existent cache path: {cache_path}")
+                    continue
+                
+                logger.info(f"Attempting to clear cache: {cache_path}")
+                
+                try:
+                    # Remove all files and subdirectories inside
+                    items_cleared = 0
+                    for item in cache_path.iterdir():
+                        if item.is_file():
+                            item.unlink()
+                            items_cleared += 1
+                            logger.debug(f"Deleted file: {item}")
+                        elif item.is_dir():
+                            shutil.rmtree(item)
+                            items_cleared += 1
+                            logger.debug(f"Deleted directory: {item}")
+                    
+                    logger.info(f"Successfully cleared {items_cleared} items from {cache_path}")
+                    cleared_paths.append(str(cache_path))
+                    
+                except PermissionError as pe:
+                    # Try sudo fallback only on Linux (where sudo is configured with NOPASSWD)
+                    logger.warning(f"Permission denied for {cache_path}, attempting sudo fallback...")
+                    
                     try:
-                        # Remove all files and subdirectories inside
-                        for item in cache_path.iterdir():
-                            if item.is_file():
-                                item.unlink()
-                            elif item.is_dir():
-                                shutil.rmtree(item)
-                        logger.info(f"Cleared cache directory contents: {cache_path}")
-                    except PermissionError:
-                        # Fall back to sudo to remove contents
-                        logger.info(f"Using sudo to clear {cache_path}")
                         result = subprocess.run(
                             ['sudo', 'find', str(cache_path), '-mindepth', '1', '-delete'],
                             capture_output=True,
                             text=True,
-                            timeout=10
+                            timeout=10,
+                            check=False
                         )
+                        
                         if result.returncode == 0:
-                            logger.info(f"Cleared cache directory with sudo: {cache_path}")
+                            logger.info(f"Successfully cleared {cache_path} using sudo")
+                            cleared_paths.append(str(cache_path))
                         else:
-                            raise Exception(f"Failed to clear with sudo: {result.stderr}")
+                            error_msg = f"Sudo command failed for {cache_path}: {result.stderr}"
+                            logger.error(error_msg)
+                            errors.append(error_msg)
+                    
+                    except FileNotFoundError:
+                        # sudo command not found or not available
+                        error_msg = f"Permission denied and sudo not available for {cache_path}. Run on production server or fix permissions manually."
+                        logger.error(error_msg)
+                        errors.append(error_msg)
+                    
+                    except subprocess.TimeoutExpired:
+                        error_msg = f"Sudo command timed out for {cache_path}"
+                        logger.error(error_msg)
+                        errors.append(error_msg)
+                    
+                    except Exception as e:
+                        error_msg = f"Sudo fallback failed for {cache_path}: {str(e)}"
+                        logger.error(error_msg)
+                        errors.append(error_msg)
             
-            return {
-                'status': 'success',
-                'message': f'All caches cleared ({self._format_bytes(total_bytes) if total_bytes else "size unknown"})',
-                'purged_bytes': total_bytes
-            }
+            # Build response
+            if cleared_paths and not errors:
+                message = f"Successfully cleared {len(cleared_paths)} cache directories"
+                if total_bytes:
+                    message += f" ({self._format_bytes(total_bytes)} freed)"
+                logger.info(message)
+                return {
+                    'status': 'success',
+                    'message': message,
+                    'purged_bytes': total_bytes,
+                    'cleared_paths': cleared_paths
+                }
+            
+            elif cleared_paths and errors:
+                message = f"Partially cleared {len(cleared_paths)} of {len(self.cache_paths)} caches. Errors: {'; '.join(errors)}"
+                logger.warning(message)
+                return {
+                    'status': 'warning',
+                    'message': message,
+                    'purged_bytes': total_bytes,
+                    'cleared_paths': cleared_paths,
+                    'errors': errors
+                }
+            
+            else:
+                message = f"Failed to clear any caches. Errors: {'; '.join(errors)}"
+                logger.error(message)
+                return {
+                    'status': 'error',
+                    'message': message,
+                    'purged_bytes': 0,
+                    'errors': errors
+                }
         
         except Exception as e:
-            logger.error(f"Failed to purge all cache: {e}")
+            error_msg = f"Unexpected error during cache purge: {str(e)}"
+            logger.error(error_msg, exc_info=True)
             return {
                 'status': 'error',
-                'message': str(e),
+                'message': error_msg,
                 'purged_bytes': 0
             }
     
