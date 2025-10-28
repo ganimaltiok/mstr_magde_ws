@@ -91,20 +91,64 @@ class CacheManager:
                         except:
                             pass  # Can't check, try sudo anyway
                         
-                        result = subprocess.run(
-                            ['sudo', 'find', str(cache_path), '-mindepth', '1', '-delete'],
-                            capture_output=True,
-                            text=True,
-                            timeout=10,
-                            check=False
-                        )
-                        
-                        if result.returncode == 0:
-                            logger.info(f"Successfully cleared {cache_path} using sudo")
-                            cleared_paths.append(str(cache_path))
-                        else:
-                            error_msg = f"Sudo command failed for {cache_path}: {result.stderr}"
-                            logger.error(error_msg)
+                        # Try calling sudo from PATH first, then try absolute common path
+                        sudo_variants = [['sudo', 'find', str(cache_path), '-mindepth', '1', '-delete'],
+                                         ['/usr/bin/sudo', 'find', str(cache_path), '-mindepth', '1', '-delete']]
+
+                        ran_ok = False
+                        last_err = None
+
+                        for cmd in sudo_variants:
+                            try:
+                                logger.debug(f"Attempting sudo fallback with: {cmd}")
+                                result = subprocess.run(
+                                    cmd,
+                                    capture_output=True,
+                                    text=True,
+                                    timeout=20,
+                                    check=False
+                                )
+
+                                # If sudo returns success, we're done
+                                if result.returncode == 0:
+                                    logger.info(f"Successfully cleared {cache_path} using: {cmd[0]}")
+                                    cleared_paths.append(str(cache_path))
+                                    ran_ok = True
+                                    break
+
+                                # If sudo returned non-zero, capture stderr for diagnostics
+                                last_err = result.stderr or result.stdout or f"exit {result.returncode}"
+                                logger.warning(f"Command {cmd} returned {result.returncode}: {last_err}")
+
+                                # Detect password prompt or permission issue messages to give targeted advice
+                                if 'password' in (result.stderr or '').lower() or 'authentication' in (result.stderr or '').lower():
+                                    last_err = 'sudo requires a password for this process. Configure NOPASSWD in /etc/sudoers.d for the app user or run as root.'
+                                    break
+
+                            except FileNotFoundError:
+                                # sudo binary not found at this path
+                                last_err = f"Command not found: {cmd[0]}"
+                                logger.debug(last_err)
+                                continue
+                            except subprocess.TimeoutExpired:
+                                last_err = f"Sudo command timed out for {cache_path}"
+                                logger.error(last_err)
+                                break
+                            except Exception as e:
+                                last_err = f"Sudo fallback failed for {cache_path}: {str(e)}"
+                                logger.error(last_err)
+                                break
+
+                        if not ran_ok:
+                            # No sudo variant succeeded
+                            if last_err is None:
+                                last_err = f"Permission denied and sudo fallback attempts failed for {cache_path}"
+                            error_msg = (
+                                f"Permission denied for {cache_path}. {last_err} "
+                                "Recommended fixes: 1) run `sudo chown -R administrator:www-data /var/cache/nginx` and ensure permissions, "
+                                "or 2) allow the app user to run find via sudo without password: add a file in /etc/sudoers.d with `administrator ALL=(ALL) NOPASSWD: /usr/bin/find`"
+                            )
+                            logger.warning(error_msg)
                             errors.append(error_msg)
                     
                     except FileNotFoundError:
