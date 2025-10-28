@@ -120,7 +120,9 @@ class MstrClient:
         
         data_response.raise_for_status()
 
-        return data_response    def get_dossier_definition(self, dossier_id: str) -> Dict[str, Any]:
+        return data_response
+    
+    def get_dossier_definition(self, dossier_id: str) -> Dict[str, Any]:
         """
         Get dossier metadata (for auto-discovery).
         
