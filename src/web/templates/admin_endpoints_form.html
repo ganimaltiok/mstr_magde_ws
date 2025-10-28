@@ -215,53 +215,20 @@
 
                 const data = await response.json();
 
-                // Populate cube_id and viz_keys (only if not already set)
-                if (!document.getElementById('cube_id').value) {
-                    document.getElementById('cube_id').value = data.cube_id || '';
-                }
-                if (!document.getElementById('summary_viz_key').value) {
-                    document.getElementById('summary_viz_key').value = data.viz_keys.summary || '';
-                }
-                if (!document.getElementById('detail_viz_key').value) {
-                    document.getElementById('detail_viz_key').value = data.viz_keys.detail || '';
-                }
+                // Populate cube_id and viz_keys
+                document.getElementById('cube_id').value = data.cube_id || '';
+                document.getElementById('summary_viz_key').value = data.viz_keys.summary || '';
+                document.getElementById('detail_viz_key').value = data.viz_keys.detail || '';
 
-                // Get existing filter mappings to preserve them
+                // Clear and populate filter table with discovered filters
                 const tbody = document.querySelector('#filter-mappings tbody');
-                const existingFilters = new Map();
-                tbody.querySelectorAll('tr').forEach(row => {
-                    const paramInput = row.querySelector('input[name="filter_param[]"]');
-                    const keyInput = row.querySelector('input[name="filter_key[]"]');
-                    if (paramInput && keyInput && paramInput.value) {
-                        existingFilters.set(paramInput.value, keyInput.value);
-                    }
-                });
-
-                // Merge discovered filters with existing ones (existing take priority)
-                const allFilters = new Map();
-                
-                // Add discovered filters first
-                data.filters.forEach(filter => {
-                    if (!existingFilters.has(filter.suggested_param_name)) {
-                        allFilters.set(filter.suggested_param_name, {
-                            key: filter.key,
-                            name: filter.name
-                        });
-                    }
-                });
-                
-                // Add existing filters (they override discovered ones)
-                existingFilters.forEach((key, param) => {
-                    allFilters.set(param, {key: key, name: '-'});
-                });
-
-                // Clear and repopulate filter table
                 tbody.innerHTML = '';
-                allFilters.forEach((value, param) => {
-                    addFilterRow(param, value.key, value.name);
+
+                data.filters.forEach(filter => {
+                    addFilterRow(filter.suggested_param_name, filter.key, filter.name);
                 });
 
-                alert(`Dossier info gathered successfully!\nFound ${data.filters.length} filters, preserved ${existingFilters.size} existing.`);
+                alert(`Dossier info gathered successfully!\n\nFound:\n- Cube ID: ${data.cube_id || 'Not found'}\n- Viz Keys: ${Object.keys(data.viz_keys).length}\n- Filters: ${data.filters.length}`);
             } catch (e) {
                 alert('Failed to gather info: ' + e.message);
             }
