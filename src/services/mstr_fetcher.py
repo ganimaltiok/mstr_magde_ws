@@ -97,6 +97,8 @@ class MstrFetcher:
                 offset = (page - 1) * per_page
             
             # Fetch from MSTR
+            import sys
+            print(f">>> Fetching from MSTR: dossier={dossier_id}, viz={viz_key}", file=sys.stderr, flush=True)
             logger.info(f">>> Fetching from MSTR: dossier={dossier_id}, viz={viz_key}, filters={view_filter}")
             response = self.client.get_report_data(
                 dossier_id=dossier_id,
@@ -105,6 +107,7 @@ class MstrFetcher:
                 limit=limit,
                 offset=offset
             )
+            print(f">>> MSTR response received OK", file=sys.stderr, flush=True)
             logger.info(f">>> MSTR response received: {type(response)}, status={response.status_code if hasattr(response, 'status_code') else 'N/A'}")
             
             # Parse CSV response with encoding detection
@@ -112,6 +115,7 @@ class MstrFetcher:
             df = None
             last_error = None
             
+            print(f">>> About to check content length", file=sys.stderr, flush=True)
             logger.info(f"Response content length: {len(response.content)} bytes")
             logger.info(f"Response headers: {response.headers.get('Content-Type', 'unknown')}")
             
