@@ -105,8 +105,21 @@ class MstrFetcher:
                 offset=offset
             )
             
-            # Parse CSV response (v1-compatible)
-            df = pd.read_csv(StringIO(response.content.decode("utf-16")))
+            # Parse CSV response with encoding detection
+            # Try UTF-16 first (MSTR standard), then UTF-8, then Latin-1
+            content = None
+            for encoding in ['utf-16', 'utf-8', 'latin-1']:
+                try:
+                    content = response.content.decode(encoding)
+                    df = pd.read_csv(StringIO(content))
+                    logger.info(f"Successfully decoded CSV with {encoding}")
+                    break
+                except (UnicodeDecodeError, pd.errors.ParserError) as e:
+                    logger.debug(f"Failed to decode with {encoding}: {e}")
+                    continue
+            
+            if content is None or df is None:
+                raise ValueError(f"Failed to decode CSV response with any encoding")
             
             # Replace NaN with None for JSON serialization
             df = df.where(pd.notnull(df), None)
