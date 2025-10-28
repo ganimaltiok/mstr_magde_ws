@@ -110,7 +110,6 @@ def get_report(report_name: str, agency_code: str = None):
                 response.headers['Cache-Control'] = 'public, max-age=600'
             elif endpoint_config.behavior == 'cachemstr':
                 # Cache until 7 AM Istanbul
-                from services.data_fetcher import get_next_7am_istanbul
                 next_7am = get_next_7am_istanbul()
                 now = datetime.now(istanbul_tz)
                 max_age = int((next_7am - now).total_seconds())

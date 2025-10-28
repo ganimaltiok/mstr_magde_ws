@@ -117,33 +117,43 @@ class CacheManager:
                 'total_size': int,
                 'short_cache_size': int,
                 'daily_cache_size': int,
-                'total_files': int
+                'total_files': int,
+                'error': str or None
             }
         """
         stats = {
             'total_size': 0,
             'short_cache_size': 0,
             'daily_cache_size': 0,
-            'total_files': 0
+            'total_files': 0,
+            'error': None
         }
         
         try:
             if self.settings.NGINX_CACHE_SHORT.exists():
-                short_size = self._get_directory_size(self.settings.NGINX_CACHE_SHORT)
-                short_files = self._count_files(self.settings.NGINX_CACHE_SHORT)
-                stats['short_cache_size'] = short_size
-                stats['total_size'] += short_size
-                stats['total_files'] += short_files
+                try:
+                    short_size = self._get_directory_size(self.settings.NGINX_CACHE_SHORT)
+                    short_files = self._count_files(self.settings.NGINX_CACHE_SHORT)
+                    stats['short_cache_size'] = short_size
+                    stats['total_size'] += short_size
+                    stats['total_files'] += short_files
+                except PermissionError:
+                    stats['error'] = 'Permission denied - cache directories owned by nginx/www-data'
             
             if self.settings.NGINX_CACHE_DAILY.exists():
-                daily_size = self._get_directory_size(self.settings.NGINX_CACHE_DAILY)
-                daily_files = self._count_files(self.settings.NGINX_CACHE_DAILY)
-                stats['daily_cache_size'] = daily_size
-                stats['total_size'] += daily_size
-                stats['total_files'] += daily_files
+                try:
+                    daily_size = self._get_directory_size(self.settings.NGINX_CACHE_DAILY)
+                    daily_files = self._count_files(self.settings.NGINX_CACHE_DAILY)
+                    stats['daily_cache_size'] = daily_size
+                    stats['total_size'] += daily_size
+                    stats['total_files'] += daily_files
+                except PermissionError:
+                    if not stats['error']:
+                        stats['error'] = 'Permission denied - cache directories owned by nginx/www-data'
         
         except Exception as e:
             logger.error(f"Failed to get cache stats: {e}")
+            stats['error'] = str(e)
         
         return stats
     

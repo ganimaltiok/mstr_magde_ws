@@ -207,11 +207,12 @@ echo ""
 echo -e "${GREEN}[10/12] Setting up nginx cache directories...${NC}"
 mkdir -p /var/cache/nginx/shortcache
 mkdir -p /var/cache/nginx/dailycache
-chown -R $DEPLOY_USER:$DEPLOY_USER /var/cache/nginx/shortcache
-chown -R $DEPLOY_USER:$DEPLOY_USER /var/cache/nginx/dailycache
-chmod -R 755 /var/cache/nginx/shortcache
-chmod -R 755 /var/cache/nginx/dailycache
-echo "Cache directories created"
+# Cache directories should be owned by www-data (nginx user) with group administrator for read access
+chown -R www-data:$DEPLOY_USER /var/cache/nginx/shortcache
+chown -R www-data:$DEPLOY_USER /var/cache/nginx/dailycache
+chmod -R 775 /var/cache/nginx/shortcache
+chmod -R 775 /var/cache/nginx/dailycache
+echo "Cache directories created (owned by www-data, readable by $DEPLOY_USER)"
 
 echo ""
 echo -e "${GREEN}[11/12] Creating nginx configuration...${NC}"
