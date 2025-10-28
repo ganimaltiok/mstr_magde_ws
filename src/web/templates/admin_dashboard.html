@@ -206,15 +206,26 @@
         async function clearEndpointCache(endpointName) {
             if (!confirm(`Clear cache for endpoint "${endpointName}"?`)) return;
             
-            const response = await fetch('/admin/cache/purge', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({target: 'endpoint', endpoint_name: endpointName})
-            });
-            
-            const result = await response.json();
-            alert(result.message || result.error);
-            location.reload();
+            try {
+                const response = await fetch('/admin/cache/purge', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({target: 'endpoint', endpoint_name: endpointName})
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    // Success - show message from result
+                    alert(result.message || `Cache cleared for ${endpointName}`);
+                    location.reload();
+                } else {
+                    // Error - show error message
+                    alert('Error: ' + (result.error || 'Failed to clear cache'));
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
         }
 
         async function deleteEndpoint(endpointName) {
