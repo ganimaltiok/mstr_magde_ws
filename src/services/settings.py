@@ -18,11 +18,6 @@ logger = logging.getLogger(__name__)
 @dataclass(frozen=True)
 class Settings:
     base_dir: Path
-    cache_type: str
-    cache_default_timeout: int
-    redis_host: str
-    redis_port: int
-    redis_db: int
     refresh_log_path: Path
     config_path: Path
     pg_host: str
@@ -101,11 +96,6 @@ def get_settings() -> Settings:
 
     return Settings(
         base_dir=base_dir,
-        cache_type=os.getenv("CACHE_TYPE", "SimpleCache"),
-        cache_default_timeout=_parse_int(os.getenv("CACHE_TIMEOUT"), 60, "CACHE_TIMEOUT"),
-        redis_host=os.getenv("REDIS_HOST", "localhost"),
-        redis_port=_parse_int(os.getenv("REDIS_PORT"), 6379, "REDIS_PORT"),
-        redis_db=_parse_int(os.getenv("REDIS_DB"), 0, "REDIS_DB"),
         refresh_log_path=_resolve_path(os.getenv("REFRESH_LOG_PATH"), refresh_log_default),
         config_path=_resolve_path(os.getenv("MSTR_CONFIG_PATH"), config_default),
         pg_host=os.getenv("PG_HOST", "localhost"),

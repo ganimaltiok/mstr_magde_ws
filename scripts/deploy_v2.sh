@@ -116,6 +116,8 @@ rm -f src/services/cache_service.py
 rm -f src/services/postgres_service.py
 rm -f src/services/report_service.py
 rm -f src/mstr_herald/reports.py
+rm -f src/web/health.py  # OLD v1 health check with Redis
+rm -f src/web/app.py     # OLD v1 app.py (replaced by web/__init__.py)
 rm -rf src/cache_refresher/
 rm -f src/web/templates/configure.html
 rm -f src/web/templates/edit_dossier.html

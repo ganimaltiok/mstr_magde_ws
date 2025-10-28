@@ -18,6 +18,8 @@ echo ""
 # List files to be deleted
 FILES_TO_DELETE=(
     "src/web/logbook.py"
+    "src/web/health.py"
+    "src/web/app.py"
     "src/web/blueprints/config_blueprint.py"
     "src/services/cache_service.py"
     "src/services/postgres_service.py"
@@ -60,6 +62,16 @@ echo "Deleting deprecated files..."
 if [ -f "src/web/logbook.py" ]; then
     rm -f "src/web/logbook.py"
     echo "✓ Deleted src/web/logbook.py"
+fi
+
+if [ -f "src/web/health.py" ]; then
+    rm -f "src/web/health.py"
+    echo "✓ Deleted src/web/health.py (v1 with Redis dependency)"
+fi
+
+if [ -f "src/web/app.py" ]; then
+    rm -f "src/web/app.py"
+    echo "✓ Deleted src/web/app.py (v1 version, replaced by web/__init__.py)"
 fi
 
 if [ -f "src/web/blueprints/config_blueprint.py" ]; then
