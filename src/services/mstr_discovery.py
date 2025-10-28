@@ -29,22 +29,31 @@ class MstrDiscoveryService:
                 ]
             }
         """
-        definition = self.client.get_dossier_definition(dossier_id)
-        
-        # Extract cube ID
-        cube_id = self._extract_cube_id(definition)
-        
-        # Extract visualization keys
-        viz_keys = self._extract_viz_keys(definition)
-        
-        # Extract filters
-        filters = self._extract_filters(definition)
-        
-        return {
-            'cube_id': cube_id,
-            'viz_keys': viz_keys,
-            'filters': filters
-        }
+        try:
+            logger.info(f"Fetching dossier definition for: {dossier_id}")
+            definition = self.client.get_dossier_definition(dossier_id)
+            logger.info(f"Retrieved definition with keys: {list(definition.keys())}")
+            
+            # Extract cube ID
+            cube_id = self._extract_cube_id(definition)
+            logger.info(f"Extracted cube_id: {cube_id}")
+            
+            # Extract visualization keys
+            viz_keys = self._extract_viz_keys(definition)
+            logger.info(f"Extracted viz_keys: {viz_keys}")
+            
+            # Extract filters
+            filters = self._extract_filters(definition)
+            logger.info(f"Extracted {len(filters)} filters: {[f['name'] for f in filters]}")
+            
+            return {
+                'cube_id': cube_id,
+                'viz_keys': viz_keys,
+                'filters': filters
+            }
+        except Exception as e:
+            logger.error(f"Discovery failed for dossier {dossier_id}: {e}", exc_info=True)
+            raise
     
     def _extract_cube_id(self, definition: Dict[str, Any]) -> Optional[str]:
         """Extract cube ID from dossier definition."""
