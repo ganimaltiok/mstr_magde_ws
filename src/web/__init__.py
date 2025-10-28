@@ -31,13 +31,14 @@ def create_app() -> Flask:
     from web.blueprints import register_blueprints
     register_blueprints(app)
     
+    # Log startup info
+    logger = logging.getLogger(__name__)
+    
     # Setup request logging - TEMPORARILY DISABLED FOR DEBUGGING
     logger.info("Request logging DISABLED for debugging")
     # from web.request_logger import setup_request_logging
     # setup_request_logging(app)
     
-    # Log startup info
-    logger = logging.getLogger(__name__)
     logger.info(f"MSTR Herald API starting on port {settings.PORT}")
     logger.info(f"Environment: {settings.FLASK_ENV}")
     
