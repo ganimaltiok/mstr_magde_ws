@@ -23,6 +23,11 @@ def _init_sentry() -> None:
     if _SENTRY_INITIALIZED:
         return
 
+    # TEMPORARILY DISABLE SENTRY FOR DEBUGGING
+    logger.info("Sentry initialization DISABLED for debugging")
+    _SENTRY_INITIALIZED = True
+    return
+    
     dsn = (os.getenv("SENTRY_DSN") or "https://a2edc7bea5dcb3c53628a115ab8f4712@o4510260666105856.ingest.de.sentry.io/4510260725022800").strip()
     if not dsn:
         logger.info("Sentry DSN not provided; skipping Sentry setup.")
