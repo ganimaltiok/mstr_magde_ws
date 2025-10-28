@@ -87,14 +87,10 @@ class MstrFetcher:
             # Build filter payload
             view_filter = self._build_filter_payload(filter_mappings, query_params)
             
-            # For cached behavior, fetch all data (no limit/offset)
-            if endpoint_config.behavior == 'cachemstr':
-                limit = 0  # MSTR: 0 means all records
-                offset = 0
-            else:
-                # For live behavior, use pagination
-                limit = per_page
-                offset = (page - 1) * per_page
+            # Always use MSTR pagination (server-side)
+            # Nginx caching will cache the paginated response
+            limit = per_page
+            offset = (page - 1) * per_page
             
             # Fetch from MSTR
             import sys
