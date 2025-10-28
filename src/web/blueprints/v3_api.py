@@ -72,6 +72,8 @@ def get_report(report_name: str, agency_code: str = None):
             per_page=per_page
         )
         
+        logger.info(f"v3_api: Fetched {len(result.data)} records for {report_name}, total={result.total_records}, pagination={result.pagination}")
+        
         # Determine data source
         if endpoint_config.is_mstr:
             data_source = 'microstrategy'
