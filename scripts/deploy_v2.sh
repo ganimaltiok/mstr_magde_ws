@@ -154,13 +154,25 @@ chown $DEPLOY_USER:$DEPLOY_USER "$DEPLOY_DIR/.env"
 chmod 600 "$DEPLOY_DIR/.env"
 
 echo ""
-echo -e "${GREEN}[7/12] Installing Python dependencies...${NC}"
-cd "$DEPLOY_DIR"
-sudo -u $DEPLOY_USER $VENV_DIR/bin/pip install -r requirements.txt --quiet
-echo "Dependencies installed"
+echo -e "${GREEN}[7/12] Installing system dependencies...${NC}"
+# Install PostgreSQL client libraries and ODBC drivers needed for Python packages
+apt-get update -qq
+apt-get install -y -qq \
+    libpq-dev \
+    python3-dev \
+    build-essential \
+    unixodbc-dev \
+    > /dev/null 2>&1
+echo "System dependencies installed"
 
 echo ""
-echo -e "${GREEN}[8/12] Migrating dossiers.yaml to endpoints.yaml...${NC}"
+echo -e "${GREEN}[8/12] Installing Python dependencies...${NC}"
+cd "$DEPLOY_DIR"
+sudo -u $DEPLOY_USER $VENV_DIR/bin/pip install -r requirements.txt --quiet
+echo "Python dependencies installed"
+
+echo ""
+echo -e "${GREEN}[9/12] Migrating dossiers.yaml to endpoints.yaml...${NC}"
 if [ -f "$BACKUP_DIR/venus/src/config/dossiers.yaml" ]; then
     echo "Running migration script..."
     sudo -u $DEPLOY_USER $VENV_DIR/bin/python scripts/migrate_dossiers.py \
@@ -183,7 +195,7 @@ fi
 chown $DEPLOY_USER:$DEPLOY_USER "$DEPLOY_DIR/src/config/endpoints.yaml"
 
 echo ""
-echo -e "${GREEN}[9/12] Setting up nginx cache directories...${NC}"
+echo -e "${GREEN}[10/12] Setting up nginx cache directories...${NC}"
 mkdir -p /var/cache/nginx/shortcache
 mkdir -p /var/cache/nginx/dailycache
 chown -R $DEPLOY_USER:$DEPLOY_USER /var/cache/nginx/shortcache
@@ -193,7 +205,7 @@ chmod -R 755 /var/cache/nginx/dailycache
 echo "Cache directories created"
 
 echo ""
-echo -e "${GREEN}[10/12] Creating nginx configuration...${NC}"
+echo -e "${GREEN}[11/12] Creating nginx configuration...${NC}"
 cat > "$NGINX_CONF" << 'EOF'
 # MSTR Herald v2 - Nginx Configuration
 # External Port: 9101
@@ -314,7 +326,7 @@ if [ $? -ne 0 ]; then
 fi
 
 echo ""
-echo -e "${GREEN}[11/12] Updating supervisor configuration...${NC}"
+echo -e "${GREEN}[12/12] Updating supervisor configuration...${NC}"
 # Update existing venus.conf to use v2
 cat > "$SUPERVISOR_CONF" << EOF
 [program:venus]
