@@ -148,6 +148,10 @@ class MstrFetcher:
             
             # Parse CSV response (v1-compatible)
             df = pd.read_csv(StringIO(response.content.decode("utf-16")))
+            
+            # Replace NaN with None for JSON serialization
+            df = df.where(pd.notnull(df), None)
+            
             total_records = len(df)
             
             return {

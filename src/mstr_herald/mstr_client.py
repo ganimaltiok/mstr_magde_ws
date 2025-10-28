@@ -73,14 +73,19 @@ class MstrClient:
         Returns:
             MSTR API response with grid data
         """
-        # Create dossier instance
+        # Create dossier instance with filters
         instance_url = f"{self.base_url}/dossiers/{dossier_id}/instances"
         logger.debug(f"Creating MSTR instance: {instance_url}")
+        
+        # Build instance payload with filters
+        instance_payload: Dict[str, Any] = {}
+        if view_filter:
+            instance_payload["viewFilter"] = view_filter
         
         instance_response = self._session.post(
             instance_url,
             headers=self._get_headers(),
-            json={},
+            json=instance_payload,
             timeout=60
         )
         
