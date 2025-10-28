@@ -101,7 +101,16 @@ def get_report(report_name: str, agency_code: str = None):
             response_data['info']['error'] = result.error
         
         # Create response with cache headers
-        response = make_response(jsonify(response_data))
+        logger.info(f"Building JSON response with {len(response_data['data'])} records...")
+        
+        try:
+            response = make_response(jsonify(response_data))
+            logger.info(f"JSON response created successfully")
+        except Exception as json_error:
+            logger.error(f"Failed to create JSON response: {json_error}", exc_info=True)
+            # Try to identify problematic data
+            logger.error(f"Sample data record: {result.data[0] if result.data else 'empty'}")
+            raise
         
         # Set cache headers based on behavior
         if endpoint_config.cache_zone:
@@ -120,6 +129,7 @@ def get_report(report_name: str, agency_code: str = None):
             # No cache for live behaviors
             response.headers['Cache-Control'] = 'no-store'
         
+        logger.info(f"Returning response with Cache-Control: {response.headers.get('Cache-Control')}")
         return response
     
     except Exception as e:
