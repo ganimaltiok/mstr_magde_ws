@@ -170,7 +170,10 @@ echo "System dependencies installed"
 echo ""
 echo -e "${GREEN}[8/12] Installing Python dependencies...${NC}"
 cd "$DEPLOY_DIR"
-sudo -u $DEPLOY_USER $VENV_DIR/bin/pip install -r requirements.txt --quiet
+# Ensure pip cache ownership is correct
+chown -R $DEPLOY_USER:$DEPLOY_USER /home/$DEPLOY_USER/.cache 2>/dev/null || true
+# Install with no cache to avoid permission issues
+sudo -u $DEPLOY_USER $VENV_DIR/bin/pip install --no-cache-dir -r requirements.txt --quiet
 echo "Python dependencies installed"
 
 echo ""
