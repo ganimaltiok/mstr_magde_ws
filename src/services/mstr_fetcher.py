@@ -18,19 +18,19 @@ class MstrFetcher:
         self,
         filter_mappings: Dict[str, str],
         query_params: Dict[str, str]
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[List[Dict[str, Any]]]:
         """
-        Build MSTR viewFilter from query parameters.
+        Build MSTR filters array (v1-compatible format).
         
         Args:
             filter_mappings: Dict of param_name -> mstr_filter_key
             query_params: Query parameters from request
         
         Returns:
-            viewFilter payload or None if no filters
+            List of filter objects or None if no filters
+            Format: [{"key": filter_key, "selections": [{"name": value}]}]
         """
-        # Group params by MSTR filter ID (for date ranges)
-        filter_groups: Dict[str, Dict[str, str]] = {}
+        applied_filters = []
         
         for param_name, param_value in query_params.items():
             # Skip pagination params
@@ -41,59 +41,18 @@ class MstrFetcher:
                 logger.warning(f"No MSTR filter mapping for param: {param_name}")
                 continue
             
-            filter_id = filter_mappings[param_name]
-            if filter_id not in filter_groups:
-                filter_groups[filter_id] = {}
-            filter_groups[filter_id][param_name] = param_value
-        
-        if not filter_groups:
-            return None
-        
-        # Build operands
-        operands = []
-        
-        for filter_id, param_values in filter_groups.items():
-            # Detect if this is a date range (has _start and _end params)
-            start_param = next((k for k in param_values if k.endswith('_start')), None)
-            end_param = next((k for k in param_values if k.endswith('_end')), None)
+            filter_key = filter_mappings[param_name]
             
-            if start_param and end_param:
-                # Date range filter
-                operands.append({
-                    "operator": "Between",
-                    "operands": [
-                        {"type": "filter", "id": filter_id},
-                        {
-                            "type": "constants",
-                            "dataType": "Date",
-                            "values": [
-                                param_values[start_param],
-                                param_values[end_param]
-                            ]
-                        }
-                    ]
-                })
-            else:
-                # Single/multi-value filter
-                for param_name, param_value in param_values.items():
-                    values = [v.strip() for v in param_value.split(',')]
-                    
-                    if len(values) == 1:
-                        operator = "Equals"
-                        elements = [{"id": f"h{values[0]}"}]
-                    else:
-                        operator = "In"
-                        elements = [{"id": f"h{v}"} for v in values]
-                    
-                    operands.append({
-                        "operator": operator,
-                        "operands": [
-                            {"type": "filter", "id": filter_id},
-                            {"type": "elements", "elements": elements}
-                        ]
-                    })
+            # Build selections (v1 format)
+            applied_filters.append({
+                "key": filter_key,
+                "selections": [{"name": str(param_value)}]
+            })
         
-        return {"operands": operands} if operands else None
+        if applied_filters:
+            logger.info(f"Applying {len(applied_filters)} MSTR filters")
+        
+        return applied_filters if applied_filters else None
     
     def fetch(
         self,

@@ -1,5 +1,5 @@
 import requests
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, List
 from services.settings import get_settings
 import logging
 
@@ -56,31 +56,32 @@ class MstrClient:
         self,
         dossier_id: str,
         viz_key: str,
-        view_filter: Optional[Dict[str, Any]] = None,
+        view_filter: Optional[List[Dict[str, Any]]] = None,
         limit: int = 0,
         offset: int = 0
-    ) -> Dict[str, Any]:
+    ) -> Any:
         """
-        Fetch data from a dossier visualization.
+        Fetch report data from MSTR as CSV (v1-compatible).
         
         Args:
             dossier_id: Dossier ID
-            viz_key: Visualization key
-            view_filter: Optional filter payload
-            limit: Number of rows (0 = all)
-            offset: Offset for pagination
+            viz_key: Visualization/chapter key
+            view_filter: Filter array in v1 format: [{"key": "...", "selections": [{"name": "..."}]}]
+            limit: Result limit (ignored for CSV)
+            offset: Result offset (ignored for CSV)
         
         Returns:
-            MSTR API response with grid data
+            Response object with CSV content
         """
-        # Create dossier instance with filters
+        # Create dossier instance with filters (v1 format)
         instance_url = f"{self.base_url}/dossiers/{dossier_id}/instances"
         logger.debug(f"Creating MSTR instance: {instance_url}")
         
-        # Build instance payload with filters
+        # Build instance payload with v1-style filters
         instance_payload: Dict[str, Any] = {}
         if view_filter:
-            instance_payload["viewFilter"] = view_filter
+            instance_payload["filters"] = view_filter
+            logger.debug(f"Applying filters: {view_filter}")
         
         instance_response = self._session.post(
             instance_url,
