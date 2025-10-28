@@ -19,28 +19,14 @@ git pull origin venus_v2
 echo "✓ Code updated"
 
 echo ""
-echo "[2/4] Stopping old gunicorn processes..."
-pkill -f "gunicorn.*9102" || echo "  (no processes running)"
-sleep 1
-echo "✓ Processes stopped"
-
-echo ""
-echo "[3/4] Starting gunicorn..."
-cd "$DEPLOY_DIR/src"
-/home/administrator/venv/bin/gunicorn \
-  --workers 3 \
-  --bind 127.0.0.1:9102 \
-  --timeout=300 \
-  --daemon \
-  --access-logfile "$DEPLOY_DIR/logs/access.log" \
-  --error-logfile "$DEPLOY_DIR/logs/error.log" \
-  app:app
+echo "[2/4] Restarting via supervisor..."
+sudo supervisorctl restart venus
 sleep 2
-echo "✓ Gunicorn started"
+echo "✓ Service restarted"
 
 echo ""
-echo "[4/4] Checking status..."
-ps aux | grep "gunicorn.*9102" | grep -v grep || echo "⚠ WARNING: No gunicorn processes found!"
+echo "[3/4] Checking status..."
+sudo supervisorctl status venus
 
 echo ""
 echo -e "${GREEN}Update complete!${NC}"
@@ -50,5 +36,5 @@ echo "  curl http://localhost:9102/ping"
 echo "  curl http://localhost:9101/admin/dashboard"
 echo ""
 echo "Check logs:"
-echo "  tail -f $DEPLOY_DIR/logs/error.log"
+echo "  sudo tail -f /var/log/venus/error.log"
 
