@@ -58,12 +58,18 @@ class MstrDiscoveryService:
     def _extract_cube_id(self, definition: Dict[str, Any]) -> Optional[str]:
         """Extract cube ID from dossier definition."""
         try:
-            # Navigate through definition structure
+            # Try datasets first (some dossiers have this)
             datasets = definition.get('definition', {}).get('datasets', [])
             if datasets and len(datasets) > 0:
-                return datasets[0].get('id')
+                cube_id = datasets[0].get('id')
+                if cube_id:
+                    return cube_id
+            
+            # Fallback: some dossiers might have cube info elsewhere
+            # For now, return None if not in datasets
+            logger.warning("No datasets found in definition, cube_id might need manual entry")
         except Exception as e:
-            logger.warning(f"Could not extract cube_id: {e}")
+            logger.error(f"Could not extract cube_id: {e}", exc_info=True)
         return None
     
     def _extract_viz_keys(self, definition: Dict[str, Any]) -> Dict[str, str]:
@@ -71,34 +77,38 @@ class MstrDiscoveryService:
         Extract visualization keys from chapters.
         
         Heuristic:
-        - First grid visualization -> 'summary'
-        - Second grid visualization -> 'detail'
+        - First visualization -> 'summary' (usually K52 or similar)
+        - Additional visualizations could be 'detail' but usually there's only one
         """
         viz_keys = {}
         
         try:
             chapters = definition.get('definition', {}).get('chapters', [])
-            grid_vizs = []
+            all_vizs = []
             
             for chapter in chapters:
-                visualizations = chapter.get('visualizations', [])
-                for viz in visualizations:
-                    # Look for grid-type visualizations
-                    viz_type = viz.get('visualizationType')
-                    if viz_type in ['grid', 'report_grid', 'GridVisualization']:
-                        grid_vizs.append({
-                            'key': viz.get('key'),
-                            'name': viz.get('name', '')
-                        })
+                pages = chapter.get('pages', [])
+                for page in pages:
+                    visualizations = page.get('visualizations', [])
+                    for viz in visualizations:
+                        viz_key = viz.get('key')
+                        viz_name = viz.get('name', '')
+                        if viz_key:
+                            all_vizs.append({
+                                'key': viz_key,
+                                'name': viz_name
+                            })
             
             # Assign to summary/detail
-            if len(grid_vizs) > 0:
-                viz_keys['summary'] = grid_vizs[0]['key']
-            if len(grid_vizs) > 1:
-                viz_keys['detail'] = grid_vizs[1]['key']
+            if len(all_vizs) > 0:
+                viz_keys['summary'] = all_vizs[0]['key']
+            if len(all_vizs) > 1:
+                viz_keys['detail'] = all_vizs[1]['key']
+            
+            logger.info(f"Found {len(all_vizs)} visualizations")
         
         except Exception as e:
-            logger.warning(f"Could not extract viz_keys: {e}")
+            logger.error(f"Could not extract viz_keys: {e}", exc_info=True)
         
         return viz_keys
     
@@ -111,26 +121,32 @@ class MstrDiscoveryService:
         filters = []
         
         try:
-            filter_section = definition.get('definition', {}).get('filters', [])
+            # Filters are inside chapters, not at definition root
+            chapters = definition.get('definition', {}).get('chapters', [])
             
-            for filter_def in filter_section:
-                filter_key = filter_def.get('key')
-                filter_name = filter_def.get('name', '')
+            for chapter in chapters:
+                chapter_filters = chapter.get('filters', [])
                 
-                if not filter_key:
-                    continue
-                
-                # Suggest parameter name from filter name
-                suggested_param = self._suggest_param_name(filter_name)
-                
-                filters.append({
-                    'key': filter_key,
-                    'name': filter_name,
-                    'suggested_param_name': suggested_param
-                })
+                for filter_def in chapter_filters:
+                    filter_key = filter_def.get('key')
+                    filter_name = filter_def.get('name', '')
+                    
+                    if not filter_key:
+                        continue
+                    
+                    # Suggest parameter name from filter name
+                    suggested_param = self._suggest_param_name(filter_name)
+                    
+                    filters.append({
+                        'key': filter_key,
+                        'name': filter_name,
+                        'suggested_param_name': suggested_param
+                    })
+            
+            logger.info(f"Extracted {len(filters)} filters from {len(chapters)} chapters")
         
         except Exception as e:
-            logger.warning(f"Could not extract filters: {e}")
+            logger.error(f"Could not extract filters: {e}", exc_info=True)
         
         return filters
     
