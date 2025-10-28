@@ -1,5 +1,6 @@
 import pandas as pd
 from typing import Dict, List, Optional, Any, Tuple
+from io import StringIO
 from mstr_herald.mstr_client import get_mstr_client
 from services.endpoint_config import EndpointConfig
 import logging
@@ -145,9 +146,9 @@ class MstrFetcher:
                 offset=offset
             )
             
-            # Parse response
-            df = self._parse_mstr_response(response)
-            total_records = self._extract_total_count(response, df)
+            # Parse CSV response (v1-compatible)
+            df = pd.read_csv(StringIO(response.content.decode("utf-16")))
+            total_records = len(df)
             
             return {
                 'data': df.to_dict('records'),
@@ -158,44 +159,6 @@ class MstrFetcher:
         except Exception as e:
             logger.error(f"Error fetching from MSTR dossier {endpoint_config.mstr.get('dossier_id')}: {e}")
             raise
-    
-    def _parse_mstr_response(self, response: Dict[str, Any]) -> pd.DataFrame:
-        """Parse MSTR grid response to DataFrame."""
-        try:
-            grid = response['result']['data']['root']['children'][0]['children']
-            
-            # Extract headers
-            headers = []
-            for header in grid[0]['children']:
-                headers.append(header.get('name', header.get('id', 'Unknown')))
-            
-            # Extract rows
-            rows = []
-            for row in grid[1:]:
-                row_data = {}
-                for i, cell in enumerate(row['children']):
-                    col_name = headers[i] if i < len(headers) else f'col_{i}'
-                    row_data[col_name] = cell.get('v', cell.get('name', None))
-                rows.append(row_data)
-            
-            return pd.DataFrame(rows)
-        
-        except (KeyError, IndexError) as e:
-            logger.error(f"Failed to parse MSTR response: {e}")
-            return pd.DataFrame()
-    
-    def _extract_total_count(self, response: Dict[str, Any], df: pd.DataFrame) -> int:
-        """Extract total row count from MSTR response metadata."""
-        try:
-            # Try to get from definition metadata
-            total = response.get('result', {}).get('definition', {}).get('grid', {}).get('rowCount')
-            if total is not None:
-                return total
-        except:
-            pass
-        
-        # Fallback to DataFrame length
-        return len(df)
     
     def test_connection(self) -> Tuple[bool, Optional[str], Optional[float]]:
         """

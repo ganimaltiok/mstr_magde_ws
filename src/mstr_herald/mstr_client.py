@@ -105,18 +105,22 @@ class MstrClient:
         if offset > 0:
             payload["offset"] = offset
         
-        # Fetch visualization data
+        # Fetch visualization data as CSV (this is what v1 uses!)
+        csv_url = f"{self.base_url}/documents/{dossier_id}/instances/{instance_id}/visualizations/{viz_key}/csv"
+        logger.debug(f"Fetching CSV from: {csv_url}")
+        
         data_response = self._session.post(
-            f"{self.base_url}/dossiers/{dossier_id}/instances/{instance_id}/visualizations/{viz_key}",
+            csv_url,
             headers=self._get_headers(),
-            json=payload,
             timeout=300
         )
-        data_response.raise_for_status()
         
-        return data_response.json()
-    
-    def get_dossier_definition(self, dossier_id: str) -> Dict[str, Any]:
+        if not data_response.ok:
+            logger.error(f"MSTR CSV fetch failed: {data_response.status_code} - {data_response.text}")
+        
+        data_response.raise_for_status()
+
+        return data_response    def get_dossier_definition(self, dossier_id: str) -> Dict[str, Any]:
         """
         Get dossier metadata (for auto-discovery).
         
