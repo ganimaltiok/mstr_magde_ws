@@ -8,10 +8,9 @@
 #
 # Architecture:
 # - Port 8000 (Nginx) → 127.0.0.1:8001 (portal_prod - existing production)
-# - Port 9101 (Nginx + Gunicorn) → venus v2 (new deployment)
+# - Port 9101 (Nginx) → 127.0.0.1:9102 (venus v2 Gunicorn)
 #
-# Note: Both nginx and gunicorn use port 9101 for v2
-# Gunicorn binds to 0.0.0.0:9101, nginx proxies to 127.0.0.1:9101
+# Note: Nginx listens on 9101 externally, proxies to Gunicorn on 9102 internally
 #
 # Run as root: sudo bash scripts/deploy_v2.sh
 ################################################################################
@@ -31,8 +30,8 @@ DEPLOY_DIR="/home/administrator/venus"
 VENV_DIR="/home/administrator/venv"
 GITHUB_REPO="https://github.com/ganimaltiok/mstr_magde_ws"
 GITHUB_BRANCH="venus_v2"
-NGINX_PORT=9101  # External port for v2 (8000 is for production)
-GUNICORN_PORT=9101  # Keep same internal port
+NGINX_PORT=9101  # External port for nginx
+GUNICORN_PORT=9102  # Internal port for gunicorn (different from nginx!)
 SUPERVISOR_CONF="/etc/supervisor/conf.d/venus.conf"
 NGINX_CONF="/etc/nginx/sites-available/venus_v2.conf"
 NGINX_ENABLED="/etc/nginx/sites-enabled/venus_v2.conf"
@@ -53,8 +52,8 @@ fi
 # Confirmation prompt
 echo -e "${YELLOW}This will deploy v2 to:${NC}"
 echo "  - Directory: $DEPLOY_DIR"
-echo "  - External Port: $NGINX_PORT"
-echo "  - Gunicorn: 0.0.0.0:$GUNICORN_PORT (bound to all interfaces)"
+echo "  - Nginx Port: $NGINX_PORT (external)"
+echo "  - Gunicorn Port: $GUNICORN_PORT (internal)"
 echo "  - Production (port 8000) will NOT be affected"
 echo ""
 read -p "Continue? (yes/no): " confirm
@@ -170,9 +169,14 @@ echo "System dependencies installed"
 echo ""
 echo -e "${GREEN}[8/12] Installing Python dependencies...${NC}"
 cd "$DEPLOY_DIR"
-# Ensure pip cache ownership is correct
+# Fix ownership of venv and cache directories
+echo "Fixing ownership of venv and cache directories..."
+chown -R $DEPLOY_USER:$DEPLOY_USER "$VENV_DIR" 2>/dev/null || true
 chown -R $DEPLOY_USER:$DEPLOY_USER /home/$DEPLOY_USER/.cache 2>/dev/null || true
+# Clean pip's build directory
+rm -rf /tmp/pip-* 2>/dev/null || true
 # Install with no cache to avoid permission issues
+echo "Installing Python packages..."
 sudo -u $DEPLOY_USER $VENV_DIR/bin/pip install --no-cache-dir -r requirements.txt --quiet
 echo "Python dependencies installed"
 
@@ -213,8 +217,8 @@ echo ""
 echo -e "${GREEN}[11/12] Creating nginx configuration...${NC}"
 cat > "$NGINX_CONF" << 'EOF'
 # MSTR Herald v2 - Nginx Configuration
-# External Port: 9101
-# Direct pass-through to Gunicorn on 0.0.0.0:9101
+# External Port: 9101 (nginx)
+# Internal Port: 9102 (gunicorn)
 
 # Cache zones
 proxy_cache_path /var/cache/nginx/shortcache 
@@ -239,7 +243,7 @@ map $request_method $is_cacheable {
 }
 
 upstream venus_v2_backend {
-    server 127.0.0.1:9101;
+    server 127.0.0.1:9102;
 }
 
 server {
@@ -336,7 +340,7 @@ echo -e "${GREEN}[12/12] Updating supervisor configuration...${NC}"
 cat > "$SUPERVISOR_CONF" << EOF
 [program:venus]
 directory=$DEPLOY_DIR/src
-command=$VENV_DIR/bin/gunicorn --workers 3 --bind 0.0.0.0:9101 --timeout=300 app:app
+command=$VENV_DIR/bin/gunicorn --workers 3 --bind 127.0.0.1:$GUNICORN_PORT --timeout=300 app:app
 autostart=true
 autorestart=true
 stopsignal=TERM
@@ -391,7 +395,7 @@ echo -e "${BLUE}Service Status:${NC}"
 supervisorctl status
 echo ""
 echo -e "${BLUE}Listening Ports:${NC}"
-netstat -tulpn | grep -E ":(8000|8001|9101)" | grep LISTEN
+netstat -tulpn | grep -E ":(8000|8001|9101|9102)" | grep LISTEN
 echo ""
 echo -e "${BLUE}Testing Endpoints:${NC}"
 echo ""
