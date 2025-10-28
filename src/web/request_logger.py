@@ -19,6 +19,10 @@ def setup_request_logging(app: Flask):
         """Log completed requests."""
         logger.info(f"after_request hook called for {request.path}")
         
+        # TEMPORARILY DISABLE FOR DEBUGGING
+        logger.info("after_request: returning response unmodified (debugging)")
+        return response
+        
         # Only log v3 API requests
         if not request.path.startswith('/api/v3/'):
             logger.info(f"Skipping logging for non-v3 path: {request.path}")
