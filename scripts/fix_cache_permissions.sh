@@ -5,9 +5,12 @@
 
 echo "Fixing nginx cache directory permissions..."
 
-# Create cache directories if they don't exist
+# Create parent directory and subdirectories
 sudo mkdir -p /var/cache/nginx/shortcache
 sudo mkdir -p /var/cache/nginx/dailycache
+
+# Fix parent directory permissions (allow administrator to access)
+sudo chmod 755 /var/cache/nginx
 
 # Change ownership to administrator:www-data (administrator can write, nginx can read)
 sudo chown -R administrator:www-data /var/cache/nginx/shortcache
