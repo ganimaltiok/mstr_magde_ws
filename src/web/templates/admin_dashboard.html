@@ -211,8 +211,11 @@
             button.disabled = true;
             button.textContent = 'Clearing...';
             
+            console.log('=== CACHE CLEAR OPERATION START ===');
+            
             try {
-                console.log('Sending cache purge request...');
+                console.log('Sending POST request to /admin/cache/purge');
+                console.log('Request body:', {target: 'all'});
                 
                 const response = await fetch('/admin/cache/purge', {
                     method: 'POST',
@@ -220,41 +223,57 @@
                     body: JSON.stringify({target: 'all'})
                 });
                 
+                console.log('Response status:', response.status, response.statusText);
+                
                 const result = await response.json();
-                console.log('Cache purge response:', result);
+                console.log('Response JSON:', JSON.stringify(result, null, 2));
                 
                 if (response.ok) {
-                    // Show detailed message based on status
-                    let message = result.message || 'Cache operation completed';
+                    console.log('Status:', result.status);
+                    console.log('Message:', result.message);
                     
-                    if (result.cleared_paths) {
-                        message += '\n\nCleared paths:\n' + result.cleared_paths.join('\n');
+                    if (result.cleared_paths && result.cleared_paths.length > 0) {
+                        console.log('Cleared paths:');
+                        result.cleared_paths.forEach(path => console.log('  ✓', path));
+                    } else {
+                        console.log('No paths were cleared');
                     }
                     
                     if (result.errors && result.errors.length > 0) {
-                        message += '\n\nErrors:\n' + result.errors.join('\n');
+                        console.error('Errors encountered:');
+                        result.errors.forEach(err => console.error('  ✗', err));
                     }
                     
+                    console.log('Purged bytes:', result.purged_bytes || 0);
+                    
+                    // Show brief popup
                     if (result.status === 'warning') {
-                        alert('⚠️ Partial Success\n\n' + message);
+                        alert('⚠️ Partial Success\n\n' + result.message + '\n\nCheck browser console (F12) for details.');
                     } else {
-                        alert('✅ Success\n\n' + message);
+                        alert('✅ Success\n\n' + result.message);
                     }
                     
+                    console.log('=== CACHE CLEAR OPERATION COMPLETE ===');
                     location.reload();
                 } else {
+                    console.error('Request failed with status:', response.status);
+                    console.error('Error details:', result);
+                    
                     let errorMsg = result.error || result.message || 'Failed to clear cache';
                     
                     if (result.errors && result.errors.length > 0) {
-                        errorMsg += '\n\nDetails:\n' + result.errors.join('\n');
+                        console.error('Detailed errors:');
+                        result.errors.forEach(err => console.error('  ✗', err));
                     }
                     
-                    console.error('Cache purge error:', result);
-                    alert('❌ Error\n\n' + errorMsg);
+                    alert('❌ Error\n\n' + errorMsg + '\n\nCheck browser console (F12) for details.');
+                    console.log('=== CACHE CLEAR OPERATION FAILED ===');
                 }
             } catch (e) {
-                console.error('Cache purge exception:', e);
-                alert('❌ Error\n\n' + e.message);
+                console.error('Exception during cache clear:', e);
+                console.error('Stack trace:', e.stack);
+                alert('❌ Error\n\n' + e.message + '\n\nCheck browser console (F12) for details.');
+                console.log('=== CACHE CLEAR OPERATION EXCEPTION ===');
             } finally {
                 button.disabled = false;
                 button.textContent = originalText;

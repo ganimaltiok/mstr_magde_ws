@@ -50,12 +50,20 @@ class CacheManager:
                     logger.info(f"Skipping non-existent cache path: {cache_path}")
                     continue
                 
-                logger.info(f"Attempting to clear cache: {cache_path}")
+                logger.info(f"Processing cache directory: {cache_path}")
                 
                 try:
+                    # Check if directory is empty
+                    items = list(cache_path.iterdir())
+                    
+                    if not items:
+                        logger.info(f"Cache directory is empty, nothing to clear: {cache_path}")
+                        cleared_paths.append(str(cache_path))  # Still count as success
+                        continue
+                    
                     # Remove all files and subdirectories inside
                     items_cleared = 0
-                    for item in cache_path.iterdir():
+                    for item in items:
                         if item.is_file():
                             item.unlink()
                             items_cleared += 1
@@ -73,6 +81,16 @@ class CacheManager:
                     logger.warning(f"Permission denied for {cache_path}, attempting sudo fallback...")
                     
                     try:
+                        # Check if directory is empty first
+                        try:
+                            items = list(cache_path.iterdir())
+                            if not items:
+                                logger.info(f"Directory is empty (checked via sudo needed path): {cache_path}")
+                                cleared_paths.append(str(cache_path))
+                                continue
+                        except:
+                            pass  # Can't check, try sudo anyway
+                        
                         result = subprocess.run(
                             ['sudo', 'find', str(cache_path), '-mindepth', '1', '-delete'],
                             capture_output=True,
@@ -91,8 +109,8 @@ class CacheManager:
                     
                     except FileNotFoundError:
                         # sudo command not found or not available
-                        error_msg = f"Permission denied and sudo not available for {cache_path}. Run on production server or fix permissions manually."
-                        logger.error(error_msg)
+                        error_msg = f"Permission denied for {cache_path}. Sudo not available (development environment). Deploy to production server for cache clearing."
+                        logger.warning(error_msg)
                         errors.append(error_msg)
                     
                     except subprocess.TimeoutExpired:
