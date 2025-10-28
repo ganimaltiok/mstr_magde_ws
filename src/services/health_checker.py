@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from services.sql_fetcher import get_sql_fetcher
 from services.pg_fetcher import get_pg_fetcher
 from services.mstr_fetcher import get_mstr_fetcher
