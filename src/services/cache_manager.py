@@ -91,64 +91,20 @@ class CacheManager:
                         except:
                             pass  # Can't check, try sudo anyway
                         
-                        # Try calling sudo from PATH first, then try absolute common path
-                        sudo_variants = [['sudo', 'find', str(cache_path), '-mindepth', '1', '-delete'],
-                                         ['/usr/bin/sudo', 'find', str(cache_path), '-mindepth', '1', '-delete']]
-
-                        ran_ok = False
-                        last_err = None
-
-                        for cmd in sudo_variants:
-                            try:
-                                logger.debug(f"Attempting sudo fallback with: {cmd}")
-                                result = subprocess.run(
-                                    cmd,
-                                    capture_output=True,
-                                    text=True,
-                                    timeout=20,
-                                    check=False
-                                )
-
-                                # If sudo returns success, we're done
-                                if result.returncode == 0:
-                                    logger.info(f"Successfully cleared {cache_path} using: {cmd[0]}")
-                                    cleared_paths.append(str(cache_path))
-                                    ran_ok = True
-                                    break
-
-                                # If sudo returned non-zero, capture stderr for diagnostics
-                                last_err = result.stderr or result.stdout or f"exit {result.returncode}"
-                                logger.warning(f"Command {cmd} returned {result.returncode}: {last_err}")
-
-                                # Detect password prompt or permission issue messages to give targeted advice
-                                if 'password' in (result.stderr or '').lower() or 'authentication' in (result.stderr or '').lower():
-                                    last_err = 'sudo requires a password for this process. Configure NOPASSWD in /etc/sudoers.d for the app user or run as root.'
-                                    break
-
-                            except FileNotFoundError:
-                                # sudo binary not found at this path
-                                last_err = f"Command not found: {cmd[0]}"
-                                logger.debug(last_err)
-                                continue
-                            except subprocess.TimeoutExpired:
-                                last_err = f"Sudo command timed out for {cache_path}"
-                                logger.error(last_err)
-                                break
-                            except Exception as e:
-                                last_err = f"Sudo fallback failed for {cache_path}: {str(e)}"
-                                logger.error(last_err)
-                                break
-
-                        if not ran_ok:
-                            # No sudo variant succeeded
-                            if last_err is None:
-                                last_err = f"Permission denied and sudo fallback attempts failed for {cache_path}"
-                            error_msg = (
-                                f"Permission denied for {cache_path}. {last_err} "
-                                "Recommended fixes: 1) run `sudo chown -R administrator:www-data /var/cache/nginx` and ensure permissions, "
-                                "or 2) allow the app user to run find via sudo without password: add a file in /etc/sudoers.d with `administrator ALL=(ALL) NOPASSWD: /usr/bin/find`"
-                            )
-                            logger.warning(error_msg)
+                        result = subprocess.run(
+                            ['sudo', 'find', str(cache_path), '-mindepth', '1', '-delete'],
+                            capture_output=True,
+                            text=True,
+                            timeout=10,
+                            check=False
+                        )
+                        
+                        if result.returncode == 0:
+                            logger.info(f"Successfully cleared {cache_path} using sudo")
+                            cleared_paths.append(str(cache_path))
+                        else:
+                            error_msg = f"Sudo command failed for {cache_path}: {result.stderr}"
+                            logger.error(error_msg)
                             errors.append(error_msg)
                     
                     except FileNotFoundError:
@@ -232,6 +188,7 @@ class CacheManager:
         }
         
         try:
+            # Try shortcache
             if self.settings.NGINX_CACHE_SHORT.exists():
                 try:
                     short_size = self._get_directory_size(self.settings.NGINX_CACHE_SHORT)
@@ -239,9 +196,20 @@ class CacheManager:
                     stats['short_cache_size'] = short_size
                     stats['total_size'] += short_size
                     stats['total_files'] += short_files
+                    logger.debug(f"Short cache: {short_files} files, {short_size} bytes")
                 except PermissionError:
-                    stats['error'] = 'Permission denied - cache directories owned by nginx/www-data'
+                    # Try with sudo
+                    logger.debug("Permission denied for shortcache, trying sudo...")
+                    size, files = self._get_cache_stats_with_sudo(self.settings.NGINX_CACHE_SHORT)
+                    if size is not None:
+                        stats['short_cache_size'] = size
+                        stats['total_size'] += size
+                        stats['total_files'] += files
+                        logger.debug(f"Short cache (via sudo): {files} files, {size} bytes")
+                    else:
+                        stats['error'] = 'Permission denied reading cache'
             
+            # Try dailycache
             if self.settings.NGINX_CACHE_DAILY.exists():
                 try:
                     daily_size = self._get_directory_size(self.settings.NGINX_CACHE_DAILY)
@@ -249,9 +217,19 @@ class CacheManager:
                     stats['daily_cache_size'] = daily_size
                     stats['total_size'] += daily_size
                     stats['total_files'] += daily_files
+                    logger.debug(f"Daily cache: {daily_files} files, {daily_size} bytes")
                 except PermissionError:
-                    if not stats['error']:
-                        stats['error'] = 'Permission denied - cache directories owned by nginx/www-data'
+                    # Try with sudo
+                    logger.debug("Permission denied for dailycache, trying sudo...")
+                    size, files = self._get_cache_stats_with_sudo(self.settings.NGINX_CACHE_DAILY)
+                    if size is not None:
+                        stats['daily_cache_size'] = size
+                        stats['total_size'] += size
+                        stats['total_files'] += files
+                        logger.debug(f"Daily cache (via sudo): {files} files, {size} bytes")
+                    else:
+                        if not stats['error']:
+                            stats['error'] = 'Permission denied reading cache'
         
         except Exception as e:
             logger.error(f"Failed to get cache stats: {e}")
@@ -270,6 +248,60 @@ class CacheManager:
     def _count_files(self, path: Path) -> int:
         """Count total files in directory."""
         return sum(1 for item in path.rglob("*") if item.is_file())
+    
+    def _get_cache_stats_with_sudo(self, path: Path) -> tuple:
+        """
+        Get cache stats using sudo when permission denied.
+        
+        Returns:
+            (size_in_bytes, file_count) or (None, 0) if failed
+        """
+        try:
+            # Get total size in bytes
+            size_result = subprocess.run(
+                ['/usr/bin/sudo', 'du', '-sb', str(path)],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False
+            )
+            
+            size_bytes = 0
+            if size_result.returncode == 0:
+                # Output format: "123456\t/path/to/dir"
+                size_str = size_result.stdout.strip().split('\t')[0]
+                size_bytes = int(size_str)
+            else:
+                logger.warning(f"Failed to get size with sudo: {size_result.stderr}")
+                return (None, 0)
+            
+            # Get file count
+            count_result = subprocess.run(
+                ['/usr/bin/sudo', 'find', str(path), '-type', 'f'],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False
+            )
+            
+            file_count = 0
+            if count_result.returncode == 0:
+                # Count non-empty lines
+                file_count = len([line for line in count_result.stdout.strip().split('\n') if line])
+            else:
+                logger.warning(f"Failed to count files with sudo: {count_result.stderr}")
+            
+            return (size_bytes, file_count)
+        
+        except FileNotFoundError:
+            logger.warning("Sudo not available")
+            return (None, 0)
+        except subprocess.TimeoutExpired:
+            logger.warning(f"Sudo command timed out for {path}")
+            return (None, 0)
+        except Exception as e:
+            logger.warning(f"Failed to get stats with sudo: {e}")
+            return (None, 0)
     
     def _format_bytes(self, bytes_val: int) -> str:
         """Format bytes to human-readable string."""
