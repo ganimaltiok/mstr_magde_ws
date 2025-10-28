@@ -43,6 +43,11 @@ class MstrFetcher:
             
             filter_key = filter_mappings[param_name]
             
+            # Skip filters with null/None key (no filter available for this param)
+            if filter_key is None:
+                logger.info(f"Skipping filter for {param_name} (filter_key is null/None)")
+                continue
+            
             # Build selections (v1 format)
             applied_filters.append({
                 "key": filter_key,
