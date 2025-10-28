@@ -146,10 +146,29 @@ class MstrFetcher:
             # Replace NaN with None for JSON serialization
             df = df.where(pd.notnull(df), None)
             
+            # Filter out aggregate rows (Total, Grand Total, etc.)
+            # These rows typically have null/None values in key identifier columns
+            if 'acente_kodu' in df.columns:
+                # Remove rows where acente_kodu is null (aggregate rows)
+                df = df[df['acente_kodu'].notna()]
+            elif 'Agency Desc' in df.columns:
+                # Remove rows that start with "Total" or "Grand Total"
+                df = df[~df['Agency Desc'].astype(str).str.startswith('Total', na=False)]
+            
             total_records = len(df)
             
+            # Convert to dict with NaN as None
+            data_records = df.to_dict('records')
+            
+            # Ensure NaN values are converted to None in the output
+            import math
+            for record in data_records:
+                for key, value in record.items():
+                    if isinstance(value, float) and math.isnan(value):
+                        record[key] = None
+            
             return {
-                'data': df.to_dict('records'),
+                'data': data_records,
                 'total_records': total_records,
                 'columns': df.columns.tolist()
             }
