@@ -17,6 +17,7 @@
         .health-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 15px; }
         .health-card { padding: 15px; border-radius: 6px; border-left: 4px solid #ccc; }
         .health-card.ok { background: #d4edda; border-left-color: #28a745; }
+        .health-card.warning { background: #fff3cd; border-left-color: #ff9800; }
         .health-card.error { background: #f8d7da; border-left-color: #dc3545; }
         .health-card.not_configured { background: #fff3cd; border-left-color: #ffc107; }
         .health-card h3 { font-size: 14px; color: #666; margin-bottom: 8px; }
@@ -41,6 +42,9 @@
         .badge-livemstr { background: #fff3e0; color: #f57c00; }
         .badge-cachemstr { background: #ffe0b2; color: #e65100; }
         .sample-url { font-family: 'Courier New', monospace; font-size: 11px; color: #666; }
+        .url-tester { display: flex; gap: 5px; align-items: center; }
+        .url-tester input { padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; width: 80px; }
+        .url-tester .btn-go { padding: 4px 12px; font-size: 12px; }
         .actions { display: flex; gap: 8px; }
         .btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; text-decoration: none; display: inline-block; }
         .btn-primary { background: #007bff; color: white; }
@@ -174,7 +178,12 @@
                             <span style="color: #999;">N/A</span>
                             {% endif %}
                         </td>
-                        <td class="sample-url">/api/v3/report/{{ endpoint.name }}/agency/100100</td>
+                        <td>
+                            <div class="url-tester">
+                                <input type="text" id="agency_{{ endpoint.name }}" value="100100" placeholder="Agency">
+                                <button class="btn btn-primary btn-go" onclick="testEndpoint('{{ endpoint.name }}')">GO</button>
+                            </div>
+                        </td>
                         <td class="actions">
                             <a href="/admin/endpoints/edit/{{ endpoint.name }}" class="btn btn-secondary">Edit</a>
                             <button onclick="clearEndpointCache('{{ endpoint.name }}')" class="btn btn-secondary">Clear Cache</button>
@@ -188,6 +197,12 @@
     </div>
 
     <script>
+        function testEndpoint(endpointName) {
+            const agencyCode = document.getElementById('agency_' + endpointName).value;
+            const url = `/api/v3/report/${endpointName}/agency/${agencyCode}`;
+            window.open(url, '_blank');
+        }
+
         async function clearEndpointCache(endpointName) {
             if (!confirm(`Clear cache for endpoint "${endpointName}"?`)) return;
             

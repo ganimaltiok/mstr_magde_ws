@@ -139,7 +139,18 @@ class HealthChecker:
             manager = get_cache_manager()
             stats = manager.get_cache_stats()
             
-            # Check if cache directories are accessible
+            # Check if there's a permission error (cache owned by nginx/www-data)
+            if stats.get('error'):
+                # Permission denied is a warning, not a critical error
+                # Cache purge still works via nginx, we just can't read stats
+                return {
+                    'status': 'warning',
+                    'total_size': 0,
+                    'total_files': 0,
+                    'error': stats['error']
+                }
+            
+            # Check if cache directories exist
             accessible = all([
                 self.settings.NGINX_CACHE_SHORT.exists(),
                 self.settings.NGINX_CACHE_DAILY.exists()
