@@ -75,7 +75,14 @@ def migrate_file(input_path: Path, output_path: Path):
     with open(input_path, 'r', encoding='utf-8') as f:
         old_config = yaml.safe_load(f) or {}
     
-    dossiers = old_config.get('dossiers', {})
+    # Old format: dossiers are at root level, not under 'dossiers' key
+    # Check if there's a 'dossiers' key, otherwise use the whole config
+    if 'dossiers' in old_config:
+        dossiers = old_config['dossiers']
+    else:
+        # Assume all top-level keys are dossier names
+        dossiers = old_config
+    
     print(f"Found {len(dossiers)} dossiers to migrate")
     
     # Build new config
