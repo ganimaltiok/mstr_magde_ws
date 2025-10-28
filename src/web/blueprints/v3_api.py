@@ -74,6 +74,22 @@ def get_report(report_name: str, agency_code: str = None):
         
         logger.info(f"v3_api: Fetched {len(result.data)} records for {report_name}, total={result.total_records}, pagination={result.pagination}")
         
+        # DEBUG: Test if issue is with data size
+        if report_name == 'agency_master_list':
+            logger.info("DEBUG: Returning minimal test response for agency_master_list")
+            return jsonify({
+                "data": result.data[:5],  # Only first 5 records
+                "pagination": result.pagination,
+                "info": {
+                    "report_name": report_name,
+                    "info_type": info_type,
+                    "cache_hit": False,
+                    "refreshed_at": datetime.now(pytz.timezone('Europe/Istanbul')).isoformat(),
+                    "data_source": "microstrategy",
+                    "debug": "minimal_response"
+                }
+            })
+        
         # Determine data source
         if endpoint_config.is_mstr:
             data_source = 'microstrategy'
