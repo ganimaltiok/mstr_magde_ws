@@ -36,7 +36,7 @@ class HealthChecker:
     
     def _check_mssql(self) -> Dict[str, Any]:
         """Check MSSQL connection."""
-        if not self.settings.mssql_connection_string:
+        if not self.settings.MSSQL_HOST or not self.settings.MSSQL_DATABASE:
             return {
                 'status': 'not_configured',
                 'response_time_ms': None,
@@ -69,7 +69,7 @@ class HealthChecker:
     
     def _check_postgresql(self) -> Dict[str, Any]:
         """Check PostgreSQL connection."""
-        if not self.settings.pg_connection_params:
+        if not self.settings.pg_host or not self.settings.pg_database:
             return {
                 'status': 'not_configured',
                 'response_time_ms': None,
