@@ -360,7 +360,7 @@ echo "Supervisor configuration updated"
 
 # Reload supervisor
 supervisorctl reread
-supervisorctl update
+supervisorctl update venus  # Only update venus, not portal_prod
 
 echo ""
 echo -e "${GREEN}[12/12] Starting services...${NC}"

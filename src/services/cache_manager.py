@@ -1,6 +1,6 @@
 import shutil
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from services.settings import get_settings
 import logging
 
