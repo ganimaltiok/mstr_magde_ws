@@ -74,12 +74,19 @@ class MstrClient:
             MSTR API response with grid data
         """
         # Create dossier instance
+        instance_url = f"{self.base_url}/dossiers/{dossier_id}/instances"
+        logger.debug(f"Creating MSTR instance: {instance_url}")
+        
         instance_response = self._session.post(
-            f"{self.base_url}/dossiers/{dossier_id}/instances",
+            instance_url,
             headers=self._get_headers(),
             json={},
             timeout=60
         )
+        
+        if not instance_response.ok:
+            logger.error(f"MSTR instance creation failed: {instance_response.status_code} - {instance_response.text}")
+        
         instance_response.raise_for_status()
         instance_id = instance_response.json()['mid']
         
