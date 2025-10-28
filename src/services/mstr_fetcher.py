@@ -97,6 +97,7 @@ class MstrFetcher:
                 offset = (page - 1) * per_page
             
             # Fetch from MSTR
+            logger.info(f">>> Fetching from MSTR: dossier={dossier_id}, viz={viz_key}, filters={view_filter}")
             response = self.client.get_report_data(
                 dossier_id=dossier_id,
                 viz_key=viz_key,
@@ -104,6 +105,7 @@ class MstrFetcher:
                 limit=limit,
                 offset=offset
             )
+            logger.info(f">>> MSTR response received: {type(response)}, status={response.status_code if hasattr(response, 'status_code') else 'N/A'}")
             
             # Parse CSV response with encoding detection
             # Try UTF-16 first (MSTR standard), then UTF-8, then Latin-1
