@@ -160,17 +160,41 @@ class MstrFetcher:
             # Convert to dict with NaN as None
             data_records = df.to_dict('records')
             
-            # Ensure NaN values are converted to None in the output
+            # Ensure NaN values are converted to None and normalize field names to camelCase
             import math
+            import re
+            
+            def to_camel_case(text):
+                """Convert text to camelCase (first letter lowercase)."""
+                # Remove Turkish characters and special chars, convert to ASCII-friendly
+                text = text.strip()
+                # Split by spaces, hyphens, underscores
+                words = re.split(r'[\s\-_]+', text)
+                if not words:
+                    return text
+                # First word lowercase, rest title case
+                result = words[0].lower()
+                for word in words[1:]:
+                    if word:
+                        result += word.capitalize()
+                return result
+            
+            normalized_records = []
             for record in data_records:
+                normalized = {}
                 for key, value in record.items():
+                    # Convert NaN to None
                     if isinstance(value, float) and math.isnan(value):
-                        record[key] = None
+                        value = None
+                    # Normalize key to camelCase
+                    new_key = to_camel_case(key)
+                    normalized[new_key] = value
+                normalized_records.append(normalized)
             
             return {
-                'data': data_records,
+                'data': normalized_records,
                 'total_records': total_records,
-                'columns': df.columns.tolist()
+                'columns': [to_camel_case(col) for col in df.columns.tolist()]
             }
         
         except Exception as e:
