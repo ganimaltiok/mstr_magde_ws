@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MSTR Herald - Health Check</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; background: #f5f5f5; }
+        .header { background: #2c3e50; color: white; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .header h1 { font-size: 24px; }
+        .header nav { margin-top: 10px; }
+        .header nav a { color: #ecf0f1; text-decoration: none; margin-right: 20px; }
+        .header nav a:hover { text-decoration: underline; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .status-card { padding: 20px; margin: 15px 0; border-radius: 8px; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .status-card h2 { font-size: 18px; margin-bottom: 15px; color: #333; }
+        .status-badge { 
+            display: inline-block; 
+            padding: 8px 16px; 
+            border-radius: 6px; 
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        .status-badge.ok { background: #d4edda; color: #155724; border-left: 4px solid #28a745; }
+        .status-badge.warning { background: #fff3cd; color: #856404; border-left: 4px solid #ff9800; }
+        .status-badge.error { background: #f8d7da; color: #721c24; border-left: 4px solid #dc3545; }
+        .status-badge.not_configured { background: #fff3cd; color: #856404; border-left: 4px solid #ffc107; }
+        .status-info { color: #666; font-size: 14px; line-height: 1.8; }
+        .status-info strong { color: #333; display: inline-block; min-width: 140px; }
+        .response-time { color: #28a745; font-weight: bold; }
+        .error-message { color: #dc3545; margin-top: 10px; padding: 10px; background: #f8d7da; border-radius: 4px; font-size: 13px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>MSTR Herald - Health Check</h1>
+        <nav>
+            <a href="/admin/dashboard">Dashboard</a>
+            <a href="/admin/endpoints">Endpoints</a>
+            <a href="/admin/cache">Cache Management</a>
+            <a href="/health">Health Check</a>
+        </nav>
+    </div>
+
+    <div class="container">
+        <div class="status-card">
+            <h2>MSSQL Server</h2>
+            <div class="status-badge {{ health_status.mssql.status }}">
+                {{ health_status.mssql.status|upper }}
+            </div>
+            <div class="status-info">
+                {% if health_status.mssql.response_time_ms %}
+                <strong>Response Time:</strong> 
+                <span class="response-time">{{ "%.1f"|format(health_status.mssql.response_time_ms) }} ms</span>
+                {% endif %}
+            </div>
+            {% if health_status.mssql.error %}
+            <div class="error-message">
+                <strong>Error:</strong> {{ health_status.mssql.error }}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="status-card">
+            <h2>PostgreSQL</h2>
+            <div class="status-badge {{ health_status.postgresql.status }}">
+                {{ health_status.postgresql.status|upper }}
+            </div>
+            <div class="status-info">
+                {% if health_status.postgresql.response_time_ms %}
+                <strong>Response Time:</strong> 
+                <span class="response-time">{{ "%.1f"|format(health_status.postgresql.response_time_ms) }} ms</span>
+                {% endif %}
+            </div>
+            {% if health_status.postgresql.error %}
+            <div class="error-message">
+                <strong>Error:</strong> {{ health_status.postgresql.error }}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="status-card">
+            <h2>MicroStrategy</h2>
+            <div class="status-badge {{ health_status.microstrategy.status }}">
+                {{ health_status.microstrategy.status|upper }}
+            </div>
+            <div class="status-info">
+                {% if health_status.microstrategy.response_time_ms %}
+                <strong>Response Time:</strong> 
+                <span class="response-time">{{ "%.1f"|format(health_status.microstrategy.response_time_ms) }} ms</span>
+                {% endif %}
+            </div>
+            {% if health_status.microstrategy.error %}
+            <div class="error-message">
+                <strong>Error:</strong> {{ health_status.microstrategy.error }}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="status-card">
+            <h2>Nginx Cache</h2>
+            <div class="status-badge {{ health_status.nginx_cache.status }}">
+                {{ health_status.nginx_cache.status|upper }}
+            </div>
+            <div class="status-info">
+                {% if health_status.nginx_cache.total_size %}
+                <strong>Cache Size:</strong> {{ (health_status.nginx_cache.total_size / 1024 / 1024) | round(2) }} MB<br>
+                <strong>Total Files:</strong> {{ health_status.nginx_cache.total_files }}
+                {% endif %}
+            </div>
+            {% if health_status.nginx_cache.error %}
+            <div class="error-message">
+                <strong>Error:</strong> {{ health_status.nginx_cache.error }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
