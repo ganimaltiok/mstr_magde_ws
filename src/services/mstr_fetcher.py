@@ -107,7 +107,7 @@ class MstrFetcher:
             
             # Parse CSV response with encoding detection
             # Try UTF-16 first (MSTR standard), then UTF-8, then Latin-1
-            content = None
+            df = None
             for encoding in ['utf-16', 'utf-8', 'latin-1']:
                 try:
                     content = response.content.decode(encoding)
@@ -118,7 +118,7 @@ class MstrFetcher:
                     logger.debug(f"Failed to decode with {encoding}: {e}")
                     continue
             
-            if content is None or df is None:
+            if df is None:
                 raise ValueError(f"Failed to decode CSV response with any encoding")
             
             # Replace NaN with None for JSON serialization
