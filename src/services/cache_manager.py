@@ -20,7 +20,7 @@ class CacheManager:
     
     def purge_all(self) -> Dict[str, Any]:
         """
-        Purge all nginx cache using sudo (cache dirs owned by nginx/root).
+        Purge all nginx cache by clearing directory contents (not the directory itself).
         
         Returns:
             {'status': 'success', 'message': str, 'purged_bytes': int}
@@ -36,31 +36,34 @@ class CacheManager:
                     except PermissionError:
                         logger.warning(f"Cannot read cache size for {cache_path}")
             
-            # Use sudo to remove cache directories (nginx owns them)
-            # Nginx will recreate them automatically on next request
+            # Clear cache directory contents (not the directory itself)
             for cache_path in self.cache_paths:
                 if cache_path.exists():
                     try:
-                        # Try direct removal first
-                        shutil.rmtree(cache_path)
-                        logger.info(f"Purged cache directory: {cache_path}")
+                        # Remove all files and subdirectories inside
+                        for item in cache_path.iterdir():
+                            if item.is_file():
+                                item.unlink()
+                            elif item.is_dir():
+                                shutil.rmtree(item)
+                        logger.info(f"Cleared cache directory contents: {cache_path}")
                     except PermissionError:
-                        # Fall back to sudo
-                        logger.info(f"Using sudo to purge {cache_path}")
+                        # Fall back to sudo to remove contents
+                        logger.info(f"Using sudo to clear {cache_path}")
                         result = subprocess.run(
-                            ['sudo', 'rm', '-rf', str(cache_path)],
+                            ['sudo', 'find', str(cache_path), '-mindepth', '1', '-delete'],
                             capture_output=True,
                             text=True,
                             timeout=10
                         )
                         if result.returncode == 0:
-                            logger.info(f"Purged cache directory with sudo: {cache_path}")
+                            logger.info(f"Cleared cache directory with sudo: {cache_path}")
                         else:
-                            raise Exception(f"Failed to purge with sudo: {result.stderr}")
+                            raise Exception(f"Failed to clear with sudo: {result.stderr}")
             
             return {
                 'status': 'success',
-                'message': f'All caches purged ({self._format_bytes(total_bytes) if total_bytes else "size unknown"})',
+                'message': f'All caches cleared ({self._format_bytes(total_bytes) if total_bytes else "size unknown"})',
                 'purged_bytes': total_bytes
             }
         
@@ -70,93 +73,6 @@ class CacheManager:
                 'status': 'error',
                 'message': str(e),
                 'purged_bytes': 0
-            }
-    
-    def purge_endpoint(self, endpoint_name: str) -> Dict[str, Any]:
-        """
-        Purge cache for specific endpoint.
-        
-        Nginx cache files are hashed, so we scan and match by cache key.
-        Cache key format: {endpoint_name}:{query_params_hash}
-        
-        Returns:
-            {'status': 'success', 'purged_files': int, 'purged_bytes': int}
-        """
-        purged_files = 0
-        purged_bytes = 0
-        
-        try:
-            for cache_path in self.cache_paths:
-                if not cache_path.exists():
-                    continue
-                
-                # Recursively scan cache files
-                try:
-                    for cache_file in cache_path.rglob("*"):
-                        if not cache_file.is_file():
-                            continue
-                        
-                        # Try to read cache key from file header
-                        try:
-                            with open(cache_file, 'rb') as f:
-                                # Read first 2KB (nginx cache metadata is at beginning)
-                                header = f.read(2048).decode('utf-8', errors='ignore')
-                                
-                                # Look for our cache key pattern
-                                # Nginx stores "KEY: <cache_key>" in metadata
-                                if f'KEY: /api/v3/report/{endpoint_name}' in header:
-                                    file_size = cache_file.stat().st_size
-                                    
-                                    # Try to delete, use sudo if permission denied
-                                    try:
-                                        cache_file.unlink()
-                                        purged_files += 1
-                                        purged_bytes += file_size
-                                        logger.debug(f"Purged cache file: {cache_file.name}")
-                                    except PermissionError:
-                                        # Use sudo to delete
-                                        result = subprocess.run(
-                                            ['sudo', 'rm', '-f', str(cache_file)],
-                                            capture_output=True,
-                                            text=True,
-                                            timeout=5
-                                        )
-                                        if result.returncode == 0:
-                                            purged_files += 1
-                                            purged_bytes += file_size
-                                            logger.debug(f"Purged cache file with sudo: {cache_file.name}")
-                        except PermissionError:
-                            logger.debug(f"Permission denied reading cache file {cache_file}")
-                            continue
-                        except Exception as e:
-                            logger.debug(f"Could not process cache file {cache_file}: {e}")
-                            continue
-                except PermissionError:
-                    logger.warning(f"Permission denied accessing cache directory {cache_path}")
-                    continue
-            
-            if purged_files == 0:
-                return {
-                    'status': 'warning',
-                    'purged_files': 0,
-                    'purged_bytes': 0,
-                    'message': 'No cache files found or permission denied'
-                }
-            
-            return {
-                'status': 'success',
-                'purged_files': purged_files,
-                'purged_bytes': purged_bytes,
-                'message': f'Purged {purged_files} files ({self._format_bytes(purged_bytes)})'
-            }
-        
-        except Exception as e:
-            logger.error(f"Failed to purge endpoint cache for '{endpoint_name}': {e}")
-            return {
-                'status': 'error',
-                'purged_files': 0,
-                'purged_bytes': 0,
-                'message': str(e)
             }
     
     def get_cache_stats(self) -> Dict[str, Any]:

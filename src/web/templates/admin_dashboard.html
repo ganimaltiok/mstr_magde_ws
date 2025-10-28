@@ -139,6 +139,7 @@
         <div class="endpoints-panel">
             <h2>
                 Endpoints
+                <button onclick="clearAllCache()" class="btn btn-danger add-endpoint-btn" style="margin-right: 10px;">Clear All Cache</button>
                 <a href="/admin/endpoints/create" class="btn btn-primary add-endpoint-btn">+ Add Endpoint</a>
             </h2>
             
@@ -186,7 +187,6 @@
                         </td>
                         <td class="actions">
                             <a href="/admin/endpoints/edit/{{ endpoint.name }}" class="btn btn-secondary">Edit</a>
-                            <button onclick="clearEndpointCache('{{ endpoint.name }}')" class="btn btn-secondary">Clear Cache</button>
                             <button onclick="deleteEndpoint('{{ endpoint.name }}')" class="btn btn-danger">Delete</button>
                         </td>
                     </tr>
@@ -203,24 +203,22 @@
             window.open(url, '_blank');
         }
 
-        async function clearEndpointCache(endpointName) {
-            if (!confirm(`Clear cache for endpoint "${endpointName}"?`)) return;
+        async function clearAllCache() {
+            if (!confirm('Clear ALL cache (both short and daily cache)?\n\nThis will clear cached data for all endpoints.')) return;
             
             try {
                 const response = await fetch('/admin/cache/purge', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({target: 'endpoint', endpoint_name: endpointName})
+                    body: JSON.stringify({target: 'all'})
                 });
                 
                 const result = await response.json();
                 
                 if (response.ok) {
-                    // Success - show message from result
-                    alert(result.message || `Cache cleared for ${endpointName}`);
+                    alert(result.message || 'All cache cleared successfully');
                     location.reload();
                 } else {
-                    // Error - show error message
                     alert('Error: ' + (result.error || 'Failed to clear cache'));
                 }
             } catch (e) {

@@ -25,29 +25,22 @@ def cache_page():
 @admin_cache_bp.route('/purge', methods=['POST'])
 def purge_cache():
     """
-    Purge cache endpoint.
+    Purge all cache.
     
     JSON payload:
     {
-        "target": "all" | "endpoint",
-        "endpoint_name": "..." (required if target="endpoint")
+        "target": "all"
     }
     """
     try:
         data = request.get_json()
         target = data.get('target')
         
-        cache_manager = get_cache_manager()
+        if target != 'all':
+            return jsonify({'error': 'Only "all" target is supported'}), 400
         
-        if target == 'all':
-            result = cache_manager.purge_all()
-        elif target == 'endpoint':
-            endpoint_name = data.get('endpoint_name')
-            if not endpoint_name:
-                return jsonify({'error': 'endpoint_name required'}), 400
-            result = cache_manager.purge_endpoint(endpoint_name)
-        else:
-            return jsonify({'error': 'Invalid target'}), 400
+        cache_manager = get_cache_manager()
+        result = cache_manager.purge_all()
         
         return jsonify(result)
     
