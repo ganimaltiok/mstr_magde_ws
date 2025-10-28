@@ -120,13 +120,14 @@ def get_report(report_name: str, agency_code: str = None):
         
         logger.info(f"Returning response with Cache-Control: {cache_control}")
         
-        # Return jsonify directly instead of make_response
-        response = jsonify(response_data)
+        # Use make_response to ensure proper response object
+        response = make_response(jsonify(response_data))
         if cache_control:
             response.headers['Cache-Control'] = cache_control
         if endpoint_config.cache_zone:
             response.headers['X-Cache-Zone'] = endpoint_config.cache_zone
         
+        logger.info(f"Response object created, type: {type(response)}, status: {response.status}")
         return response
     
     except Exception as e:
