@@ -10,6 +10,16 @@ logger = logging.getLogger(__name__)
 v3_bp = Blueprint('v3_api', __name__, url_prefix='/api/v3')
 
 
+@v3_bp.route('/test', methods=['GET'])
+def test_endpoint():
+    """Simple test endpoint to verify JSON responses work."""
+    return jsonify({
+        "status": "ok",
+        "message": "Test endpoint working",
+        "data": [{"id": 1, "name": "test"}]
+    })
+
+
 @v3_bp.route('/report/<report_name>', methods=['GET'])
 @v3_bp.route('/report/<report_name>/agency/<agency_code>', methods=['GET'])
 def get_report(report_name: str, agency_code: str = None):
