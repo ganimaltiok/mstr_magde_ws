@@ -31,9 +31,10 @@ def create_app() -> Flask:
     from web.blueprints import register_blueprints
     register_blueprints(app)
     
-    # Setup request logging
-    from web.request_logger import setup_request_logging
-    setup_request_logging(app)
+    # Setup request logging - TEMPORARILY DISABLED FOR DEBUGGING
+    logger.info("Request logging DISABLED for debugging")
+    # from web.request_logger import setup_request_logging
+    # setup_request_logging(app)
     
     # Log startup info
     logger = logging.getLogger(__name__)
