@@ -122,7 +122,12 @@ class MstrClient:
         )
         
         if not data_response.ok:
-            logger.error(f"MSTR CSV fetch failed: {data_response.status_code} - {data_response.text}")
+            # Try to decode error message safely
+            try:
+                error_text = data_response.text
+            except:
+                error_text = f"<binary content, {len(data_response.content)} bytes>"
+            logger.error(f"MSTR CSV fetch failed: {data_response.status_code} - {error_text}")
         
         data_response.raise_for_status()
 

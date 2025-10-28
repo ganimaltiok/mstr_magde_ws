@@ -108,18 +108,34 @@ class MstrFetcher:
             # Parse CSV response with encoding detection
             # Try UTF-16 first (MSTR standard), then UTF-8, then Latin-1
             df = None
-            for encoding in ['utf-16', 'utf-8', 'latin-1']:
+            last_error = None
+            
+            logger.info(f"Response content length: {len(response.content)} bytes")
+            logger.info(f"Response headers: {response.headers.get('Content-Type', 'unknown')}")
+            
+            for encoding in ['utf-16', 'utf-8', 'latin-1', 'utf-16-le', 'utf-16-be', 'iso-8859-1']:
                 try:
                     content = response.content.decode(encoding)
                     df = pd.read_csv(StringIO(content))
-                    logger.info(f"Successfully decoded CSV with {encoding}")
+                    logger.info(f"✓ Successfully decoded CSV with {encoding}, rows: {len(df)}")
                     break
-                except (UnicodeDecodeError, pd.errors.ParserError) as e:
-                    logger.debug(f"Failed to decode with {encoding}: {e}")
+                except UnicodeDecodeError as e:
+                    last_error = f"{encoding}: UnicodeDecodeError at position {e.start}"
+                    logger.debug(f"✗ {last_error}")
+                    continue
+                except pd.errors.ParserError as e:
+                    last_error = f"{encoding}: ParserError - {str(e)[:100]}"
+                    logger.debug(f"✗ {last_error}")
+                    continue
+                except Exception as e:
+                    last_error = f"{encoding}: {type(e).__name__} - {str(e)[:100]}"
+                    logger.warning(f"✗ {last_error}")
                     continue
             
             if df is None:
-                raise ValueError(f"Failed to decode CSV response with any encoding")
+                error_msg = f"Failed to decode CSV response. Last error: {last_error}. Tried: utf-16, utf-8, latin-1, utf-16-le, utf-16-be, iso-8859-1"
+                logger.error(error_msg)
+                raise ValueError(error_msg)
             
             # Replace NaN with None for JSON serialization
             df = df.where(pd.notnull(df), None)
