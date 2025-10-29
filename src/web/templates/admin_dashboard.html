@@ -122,10 +122,6 @@
                         <th>Name</th>
                         <th>Behavior</th>
                         <th>Description</th>
-                        <th>Last Request</th>
-                        <th>Total Requests</th>
-                        <th>Avg Response</th>
-                        <th>Cache Hit Rate</th>
                         <th>Sample URL</th>
                         <th>Actions</th>
                     </tr>
@@ -136,22 +132,6 @@
                         <td><strong>{{ endpoint.name }}</strong></td>
                         <td><span class="badge badge-{{ endpoint.behavior }}">{{ endpoint.behavior }}</span></td>
                         <td>{{ endpoint.description }}</td>
-                        <td>
-                            {% if endpoint.last_request %}
-                            {{ endpoint.last_request.strftime('%Y-%m-%d %H:%M') }}
-                            {% else %}
-                            <span style="color: #999;">Never</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ endpoint.total_requests }}</td>
-                        <td>{{ "%.0f"|format(endpoint.avg_response_time_ms) }} ms</td>
-                        <td>
-                            {% if endpoint.is_cached %}
-                            {{ "%.1f"|format(endpoint.cache_hit_rate) }}%
-                            {% else %}
-                            <span style="color: #999;">N/A</span>
-                            {% endif %}
-                        </td>
                         <td>
                             <div class="url-tester">
                                 <input type="text" id="agency_{{ endpoint.name }}" value="100100" placeholder="Agency">
