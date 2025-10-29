@@ -206,8 +206,16 @@ class CacheManager:
                     stats['total_files'] += short_files
                     logger.debug(f"Short cache: {short_files} files, {short_size} bytes")
                 except PermissionError:
-                    logger.debug("Permission denied for shortcache")
-                    stats['error'] = 'Permission denied reading cache (run with proper permissions)'
+                    # Try with sudo
+                    logger.debug("Permission denied for shortcache, trying sudo...")
+                    size, files = self._get_cache_stats_with_sudo(self.settings.NGINX_CACHE_SHORT)
+                    if size is not None:
+                        stats['short_cache_size'] = size
+                        stats['total_size'] += size
+                        stats['total_files'] += files
+                        logger.debug(f"Short cache (via sudo): {files} files, {size} bytes")
+                    else:
+                        stats['error'] = 'Permission denied reading cache'
             
             # Try dailycache
             if self.settings.NGINX_CACHE_DAILY.exists():
@@ -219,9 +227,17 @@ class CacheManager:
                     stats['total_files'] += daily_files
                     logger.debug(f"Daily cache: {daily_files} files, {daily_size} bytes")
                 except PermissionError:
-                    logger.debug("Permission denied for dailycache")
-                    if not stats['error']:
-                        stats['error'] = 'Permission denied reading cache (run with proper permissions)'
+                    # Try with sudo
+                    logger.debug("Permission denied for dailycache, trying sudo...")
+                    size, files = self._get_cache_stats_with_sudo(self.settings.NGINX_CACHE_DAILY)
+                    if size is not None:
+                        stats['daily_cache_size'] = size
+                        stats['total_size'] += size
+                        stats['total_files'] += files
+                        logger.debug(f"Daily cache (via sudo): {files} files, {size} bytes")
+                    else:
+                        if not stats['error']:
+                            stats['error'] = 'Permission denied reading cache'
         
         except Exception as e:
             logger.error(f"Failed to get cache stats: {e}")
