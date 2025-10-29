@@ -25,8 +25,10 @@ def setup_request_logging(app: Flask):
         response_time_ms = (time.time() - g.start_time) * 1000
         
         # Extract endpoint name from path
+        # Path format: /api/v3/report/<endpoint_name> or /api/v3/report/<endpoint_name>/agency/<code>
         path_parts = request.path.split('/')
-        endpoint_name = path_parts[3] if len(path_parts) > 3 else 'unknown'
+        # path_parts = ['', 'api', 'v3', 'report', 'endpoint_name', ...]
+        endpoint_name = path_parts[4] if len(path_parts) > 4 else 'unknown'
         
         # Check if response was from cache
         cache_hit = response.headers.get('X-Cache-Status') == 'HIT'
