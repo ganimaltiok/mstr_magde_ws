@@ -173,6 +173,11 @@ class PGFetcher:
             params_with_pagination = {**params, 'limit': per_page, 'offset': offset}
             df = pd.read_sql(text(data_sql), engine, params=params_with_pagination)
             
+            # Convert datetime columns to ISO format with timezone (like MSTR)
+            for col in df.columns:
+                if pd.api.types.is_datetime64_any_dtype(df[col]):
+                    df[col] = df[col].apply(lambda x: x.isoformat() if pd.notna(x) else None)
+            
             return {
                 'data': df.to_dict('records'),
                 'total_records': total_records,
