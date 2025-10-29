@@ -1,5 +1,5 @@
-import psycopg2
-import psycopg2.pool
+from sqlalchemy import create_engine, text
+from sqlalchemy.pool import NullPool
 import pandas as pd
 from typing import Dict, List, Tuple, Optional, Any
 from services.settings import get_settings
@@ -13,63 +13,50 @@ class PGFetcher:
     
     def __init__(self):
         self.settings = get_settings()
-        self._connection_pool: Optional[psycopg2.pool.SimpleConnectionPool] = None
+        self._engine = None
     
-    def _get_pool(self) -> psycopg2.pool.SimpleConnectionPool:
-        """Get connection pool (lazy initialization)."""
-        if self._connection_pool is None:
+    def _get_engine(self):
+        """Get SQLAlchemy engine (lazy initialization)."""
+        if self._engine is None:
             # Build connection params from settings
             if not self.settings.pg_host or not self.settings.pg_database:
                 raise ValueError("PostgreSQL connection not configured (missing PG_HOST or PG_DATABASE)")
             
-            params = {
-                'host': self.settings.pg_host,
-                'port': self.settings.pg_port,
-                'database': self.settings.pg_database,
-                'user': self.settings.pg_user,
-                'password': self.settings.pg_password
-            }
-            
-            self._connection_pool = psycopg2.pool.SimpleConnectionPool(
-                minconn=1,
-                maxconn=10,
-                **params
+            # Build SQLAlchemy connection string
+            connection_string = (
+                f"postgresql://{self.settings.pg_user}:{self.settings.pg_password}"
+                f"@{self.settings.pg_host}:{self.settings.pg_port}/{self.settings.pg_database}"
             )
-        return self._connection_pool
-    
-    def _get_connection(self):
-        """Get connection from pool."""
-        return self._get_pool().getconn()
-    
-    def _return_connection(self, conn):
-        """Return connection to pool."""
-        self._get_pool().putconn(conn)
+            
+            self._engine = create_engine(
+                connection_string,
+                poolclass=NullPool,  # Use NullPool to avoid connection pooling issues
+                echo=False
+            )
+        return self._engine
     
     def _get_table_columns(self, schema: str, table: str) -> List[str]:
         """Get list of columns for validation."""
-        query = """
+        query = text("""
             SELECT column_name
             FROM information_schema.columns
-            WHERE table_schema = %s AND table_name = %s
+            WHERE table_schema = :schema AND table_name = :table
             ORDER BY ordinal_position
-        """
+        """)
         
-        conn = self._get_connection()
-        try:
-            cursor = conn.cursor()
-            cursor.execute(query, (schema, table))
-            return [row[0] for row in cursor.fetchall()]
-        finally:
-            self._return_connection(conn)
+        engine = self._get_engine()
+        with engine.connect() as conn:
+            result = conn.execute(query, {"schema": schema, "table": table})
+            return [row[0] for row in result]
     
     def _build_where_clause(
         self,
         query_params: Dict[str, str],
         table_columns: List[str]
-    ) -> Tuple[str, List[Any]]:
+    ) -> Tuple[str, Dict[str, Any]]:
         """Build WHERE clause from query parameters (same logic as SQL fetcher)."""
         conditions = []
-        params = []
+        params = {}
         param_counter = 1
         
         for param_name, param_value in query_params.items():
@@ -111,15 +98,21 @@ class PGFetcher:
             # Build condition
             if operator == 'IN':
                 values = param_value.split(',')
-                placeholders = ','.join([f'%s' for _ in values])
+                placeholders = ','.join([f':p{i}' for i in range(param_counter, param_counter + len(values))])
                 conditions.append(f'"{column}" IN ({placeholders})')
-                params.extend(values)
+                for val in values:
+                    params[f'p{param_counter}'] = val
+                    param_counter += 1
             elif operator == 'ILIKE':
-                conditions.append(f'"{column}" ILIKE %s')
-                params.append(f"%{param_value}%")
+                param_key = f'p{param_counter}'
+                conditions.append(f'"{column}" ILIKE :{param_key}')
+                params[param_key] = f"%{param_value}%"
+                param_counter += 1
             else:
-                conditions.append(f'"{column}" {operator} %s')
-                params.append(param_value)
+                param_key = f'p{param_counter}'
+                conditions.append(f'"{column}" {operator} :{param_key}')
+                params[param_key] = param_value
+                param_counter += 1
         
         where_clause = ' AND '.join(conditions) if conditions else 'TRUE'
         return where_clause, params
@@ -149,33 +142,31 @@ class PGFetcher:
             # Build WHERE clause
             where_clause, params = self._build_where_clause(query_params, columns)
             
-            conn = self._get_connection()
-            try:
-                # Count total records
-                count_sql = f'SELECT COUNT(*) FROM "{schema}"."{table}" WHERE {where_clause}'
-                cursor = conn.cursor()
-                cursor.execute(count_sql, params)
-                total_records = cursor.fetchone()[0]
-                
-                # Fetch data with pagination
-                offset = (page - 1) * per_page
-                data_sql = f"""
-                    SELECT * FROM "{schema}"."{table}"
-                    WHERE {where_clause}
-                    ORDER BY 1
-                    LIMIT %s OFFSET %s
-                """
-                
-                params_with_pagination = params + [per_page, offset]
-                df = pd.read_sql(data_sql, conn, params=params_with_pagination)
-                
-                return {
-                    'data': df.to_dict('records'),
-                    'total_records': total_records,
-                    'columns': df.columns.tolist()
-                }
-            finally:
-                self._return_connection(conn)
+            engine = self._get_engine()
+            
+            # Count total records
+            count_sql = text(f'SELECT COUNT(*) FROM "{schema}"."{table}" WHERE {where_clause}')
+            with engine.connect() as conn:
+                result = conn.execute(count_sql, params)
+                total_records = result.scalar()
+            
+            # Fetch data with pagination
+            offset = (page - 1) * per_page
+            data_sql = f"""
+                SELECT * FROM "{schema}"."{table}"
+                WHERE {where_clause}
+                ORDER BY 1
+                LIMIT :limit OFFSET :offset
+            """
+            
+            params_with_pagination = {**params, 'limit': per_page, 'offset': offset}
+            df = pd.read_sql(text(data_sql), engine, params=params_with_pagination)
+            
+            return {
+                'data': df.to_dict('records'),
+                'total_records': total_records,
+                'columns': df.columns.tolist()
+            }
         
         except Exception as e:
             logger.error(f"Error fetching from PostgreSQL {schema}.{table}: {e}")
@@ -192,13 +183,10 @@ class PGFetcher:
         
         try:
             start = time.time()
-            conn = self._get_connection()
-            try:
-                cursor = conn.cursor()
-                cursor.execute("SELECT 1")
-                cursor.fetchone()
-            finally:
-                self._return_connection(conn)
+            engine = self._get_engine()
+            with engine.connect() as conn:
+                result = conn.execute(text("SELECT 1"))
+                result.scalar()
             elapsed_ms = (time.time() - start) * 1000
             return True, None, elapsed_ms
         
