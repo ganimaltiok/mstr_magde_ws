@@ -176,10 +176,14 @@ class PGFetcher:
             logger.info(f"PostgreSQL SELECT query: {data_sql} | Params: {params_with_pagination}")
             df = pd.read_sql(text(data_sql), engine, params=params_with_pagination)
             
-            # Convert datetime columns to ISO format with timezone (like MSTR)
+            # Convert datetime columns to ISO format strings (like MSTR) BEFORE to_dict()
             for col in df.columns:
                 if pd.api.types.is_datetime64_any_dtype(df[col]):
-                    df[col] = df[col].apply(lambda x: x.isoformat() if pd.notna(x) else None)
+                    # Use apply with proper ISO format handling
+                    df[col] = df[col].apply(
+                        lambda x: x.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + '+03:00' 
+                        if pd.notna(x) else None
+                    )
             
             return {
                 'data': df.to_dict('records'),
