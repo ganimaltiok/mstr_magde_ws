@@ -176,9 +176,17 @@ class PGFetcher:
             logger.info(f"PostgreSQL SELECT query: {data_sql} | Params: {params_with_pagination}")
             df = pd.read_sql(text(data_sql), engine, params=params_with_pagination)
             
-            # Convert datetime columns to ISO format strings (like MSTR) BEFORE to_dict()
+            # Log DataFrame dtypes for debugging
+            logger.info(f"DataFrame dtypes: {df.dtypes.to_dict()}")
+            
+            # Convert datetime/timestamp columns to ISO format strings (like MSTR) BEFORE to_dict()
             for col in df.columns:
-                if pd.api.types.is_datetime64_any_dtype(df[col]):
+                col_dtype = str(df[col].dtype)
+                logger.info(f"Column {col} dtype: {col_dtype}")
+                
+                # Check for any datetime-like type
+                if pd.api.types.is_datetime64_any_dtype(df[col]) or 'datetime' in col_dtype or 'timestamp' in col_dtype:
+                    logger.info(f"Converting datetime column: {col}")
                     # Use apply with proper ISO format handling
                     df[col] = df[col].apply(
                         lambda x: x.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + '+03:00' 
