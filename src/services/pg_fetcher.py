@@ -39,10 +39,11 @@ class PGFetcher:
             logger.info(f"Creating PostgreSQL engine for {host}:{port}/{database}")
             
             # Use NullPool to avoid connection pooling issues
+            # echo=True logs all SQL statements
             self._engine = create_engine(
                 connection_string,
                 poolclass=NullPool,
-                echo=False
+                echo=True
             )
         return self._engine
     
@@ -157,6 +158,7 @@ class PGFetcher:
             
             # Count total records
             count_sql = text(f'SELECT COUNT(*) FROM "{schema}"."{table}" WHERE {where_clause}')
+            logger.info(f"PostgreSQL COUNT query: {count_sql} | Params: {params}")
             with engine.connect() as conn:
                 result = conn.execute(count_sql, params)
                 total_records = result.scalar()
@@ -171,6 +173,7 @@ class PGFetcher:
             """
             
             params_with_pagination = {**params, 'limit': per_page, 'offset': offset}
+            logger.info(f"PostgreSQL SELECT query: {data_sql} | Params: {params_with_pagination}")
             df = pd.read_sql(text(data_sql), engine, params=params_with_pagination)
             
             # Convert datetime columns to ISO format with timezone (like MSTR)
