@@ -50,31 +50,33 @@ def create_app() -> Flask:
 
     @app.after_request
     def _record_request(response):
-        if request.blueprint != "reports_v3":
-            return response
-        try:
-            duration_ms = int((time.perf_counter() - getattr(g, "_request_start_time", time.perf_counter())) * 1000)
-            payload = None
-            response_size = 0
-            if response.direct_passthrough is False:
-                raw_body = response.get_data()
-                response_size = len(raw_body)
-                if response.mimetype and response.mimetype.startswith("application/json"):
-                    text = raw_body.decode(response.charset or "utf-8", errors="replace")
-                    payload = text if len(text) <= 20000 else text[:20000] + "... (truncated)"
-            entry = logbook.RequestLogEntry(
-                timestamp=datetime.utcnow(),
-                method=request.method,
-                url=request.url,
-                status=response.status_code,
-                duration_ms=duration_ms,
-                remote_addr=request.remote_addr or "-",
-                response_size=response_size,
-                response_json=payload,
-            )
-            logbook.add_entry(entry)
-        except Exception:  # pragma: no cover - logging should never break responses
-            logger.exception("Failed to record request log entry.")
+        # Only log requests from the old reports_v3 blueprint (if it exists)
+        # Do NOT process v3_api or other blueprints - response.get_data() breaks v3_api
+        if request.blueprint == "reports_v3":
+            # This blueprint doesn't exist anymore, so this will never run
+            try:
+                duration_ms = int((time.perf_counter() - getattr(g, "_request_start_time", time.perf_counter())) * 1000)
+                payload = None
+                response_size = 0
+                if response.direct_passthrough is False:
+                    raw_body = response.get_data()
+                    response_size = len(raw_body)
+                    if response.mimetype and response.mimetype.startswith("application/json"):
+                        text = raw_body.decode(response.charset or "utf-8", errors="replace")
+                        payload = text if len(text) <= 20000 else text[:20000] + "... (truncated)"
+                entry = logbook.RequestLogEntry(
+                    timestamp=datetime.utcnow(),
+                    method=request.method,
+                    url=request.url,
+                    status=response.status_code,
+                    duration_ms=duration_ms,
+                    remote_addr=request.remote_addr or "-",
+                    response_size=response_size,
+                    response_json=payload,
+                )
+                logbook.add_entry(entry)
+            except Exception:  # pragma: no cover - logging should never break responses
+                logger.exception("Failed to record request log entry.")
         return response
 
     @app.get("/ping")
