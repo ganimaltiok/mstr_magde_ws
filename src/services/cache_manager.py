@@ -1,5 +1,6 @@
 import shutil
 import subprocess
+import os
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 from services.settings import get_settings
@@ -260,14 +261,63 @@ class CacheManager:
     def _get_directory_size(self, path: Path) -> int:
         """Get total size of directory in bytes."""
         total = 0
-        for item in path.rglob("*"):
-            if item.is_file():
-                total += item.stat().st_size
+        accessible_items = 0
+        permission_errors = 0
+        
+        try:
+            # Walk the directory tree manually to catch permission errors
+            for root, dirs, files in os.walk(path):
+                try:
+                    for file in files:
+                        try:
+                            file_path = Path(root) / file
+                            total += file_path.stat().st_size
+                            accessible_items += 1
+                        except (PermissionError, OSError) as e:
+                            permission_errors += 1
+                            logger.debug(f"Permission denied accessing {file_path}: {e}")
+                except PermissionError as e:
+                    permission_errors += 1
+                    logger.debug(f"Permission denied accessing directory {root}: {e}")
+            
+            # If we found permission errors but no accessible items, we need sudo
+            if permission_errors > 0 and accessible_items == 0:
+                logger.info(f"No accessible items found in {path}, triggering sudo fallback")
+                raise PermissionError(f"Cannot access cache files in {path}")
+                
+        except PermissionError:
+            raise
+            
         return total
     
     def _count_files(self, path: Path) -> int:
         """Count total files in directory."""
-        return sum(1 for item in path.rglob("*") if item.is_file())
+        count = 0
+        permission_errors = 0
+        
+        try:
+            for root, dirs, files in os.walk(path):
+                try:
+                    for file in files:
+                        try:
+                            # Just checking if we can access it
+                            file_path = Path(root) / file
+                            file_path.stat()
+                            count += 1
+                        except (PermissionError, OSError):
+                            permission_errors += 1
+                except PermissionError:
+                    permission_errors += 1
+            
+            # If we found permission errors but no accessible files, we need sudo
+            if permission_errors > 0 and count == 0:
+                logger.info(f"No accessible files found in {path}, triggering sudo fallback")
+                raise PermissionError(f"Cannot access cache files in {path}")
+                
+        except PermissionError:
+            raise
+            
+        return count
     
     def _get_cache_stats_with_sudo(self, path: Path) -> tuple:
         """
