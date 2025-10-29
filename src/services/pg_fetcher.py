@@ -22,15 +22,21 @@ class PGFetcher:
             if not self.settings.pg_host or not self.settings.pg_database:
                 raise ValueError("PostgreSQL connection not configured (missing PG_HOST or PG_DATABASE)")
             
-            # Build SQLAlchemy connection string
+            # Build SQLAlchemy connection string with explicit host to avoid Unix socket
+            # Use 'localhost' if host is set to empty or 'localhost'
+            host = self.settings.pg_host if self.settings.pg_host else 'localhost'
+            port = self.settings.pg_port if self.settings.pg_port else 5432
+            
             connection_string = (
                 f"postgresql://{self.settings.pg_user}:{self.settings.pg_password}"
-                f"@{self.settings.pg_host}:{self.settings.pg_port}/{self.settings.pg_database}"
+                f"@{host}:{port}/{self.settings.pg_database}"
             )
             
+            # Add connect_args to force TCP connection
             self._engine = create_engine(
                 connection_string,
                 poolclass=NullPool,  # Use NullPool to avoid connection pooling issues
+                connect_args={'host': host, 'port': port},
                 echo=False
             )
         return self._engine
