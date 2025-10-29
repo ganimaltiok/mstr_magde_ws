@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request, make_response
+from flask import Blueprint, jsonify, request, make_response, after_this_request
 from services.endpoint_config import get_config_store
 from services.data_fetcher import get_data_fetcher
 from datetime import datetime
@@ -129,6 +129,12 @@ def get_report(report_name: str, agency_code: str = None):
             cache_control = 'no-store'
         
         logger.info(f"Returning response with Cache-Control: {cache_control}")
+        
+        # Add logging AFTER response is sent
+        @after_this_request
+        def log_after_send(response):
+            logger.info("!!! after_this_request: Response was sent to client")
+            return response
         
         # Use make_response to ensure proper response object
         response = make_response(jsonify(response_data))
