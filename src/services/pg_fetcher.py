@@ -1,5 +1,6 @@
 from sqlalchemy import create_engine, text
 from sqlalchemy.pool import NullPool
+from urllib.parse import quote_plus
 import pandas as pd
 from typing import Dict, List, Tuple, Optional, Any
 from services.settings import get_settings
@@ -19,17 +20,23 @@ class PGFetcher:
         """Get SQLAlchemy engine (lazy initialization)."""
         if self._engine is None:
             # Build connection params from settings
-            if not self.settings.pg_host or not self.settings.pg_database:
-                raise ValueError("PostgreSQL connection not configured (missing PG_HOST or PG_DATABASE)")
+            if not self.settings.pg_database:
+                raise ValueError("PostgreSQL connection not configured (missing PG_DATABASE)")
             
-            # Build SQLAlchemy connection string with explicit host to avoid Unix socket
-            host = self.settings.pg_host if self.settings.pg_host else 'localhost'
+            # Ensure we have a valid host (not empty, not just whitespace)
+            host = (self.settings.pg_host or '').strip()
+            if not host:
+                raise ValueError("PostgreSQL PG_HOST is empty or not configured")
+            
             port = self.settings.pg_port if self.settings.pg_port else 5432
+            user = quote_plus(self.settings.pg_user or 'postgres')
+            password = quote_plus(self.settings.pg_password or '')
+            database = self.settings.pg_database
             
-            connection_string = (
-                f"postgresql://{self.settings.pg_user}:{self.settings.pg_password}"
-                f"@{host}:{port}/{self.settings.pg_database}"
-            )
+            # Build SQLAlchemy connection string with URL-encoded credentials
+            connection_string = f"postgresql://{user}:{password}@{host}:{port}/{database}"
+            
+            logger.info(f"Creating PostgreSQL engine for {host}:{port}/{database}")
             
             # Use NullPool to avoid connection pooling issues
             self._engine = create_engine(
