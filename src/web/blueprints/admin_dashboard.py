@@ -2,7 +2,6 @@ from flask import Blueprint, render_template, jsonify
 from services.health_checker import get_health_checker
 from services.endpoint_config import get_config_store
 from services.access_logger import get_access_logger
-from services.cache_manager import get_cache_manager
 
 admin_dashboard_bp = Blueprint('admin_dashboard', __name__, url_prefix='/admin')
 
@@ -23,10 +22,6 @@ def dashboard():
     access_logger = get_access_logger()
     access_stats = access_logger.get_all_stats()
     
-    # Get cache statistics
-    cache_manager = get_cache_manager()
-    cache_stats = cache_manager.get_cache_stats()
-    
     # Build endpoint table data
     endpoint_data = []
     for name, config in endpoints.items():
@@ -46,8 +41,7 @@ def dashboard():
     
     return render_template('admin_dashboard.html',
                          health_status=health_status,
-                         endpoints=endpoint_data,
-                         cache_stats=cache_stats)
+                         endpoints=endpoint_data)
 
 
 @admin_dashboard_bp.route('/api/dashboard/stats')
@@ -59,11 +53,7 @@ def dashboard_stats_api():
     access_logger = get_access_logger()
     access_stats = access_logger.get_all_stats()
     
-    cache_manager = get_cache_manager()
-    cache_stats = cache_manager.get_cache_stats()
-    
     return jsonify({
         'health': health_status,
-        'access': access_stats,
-        'cache': cache_stats
+        'access': access_stats
     })

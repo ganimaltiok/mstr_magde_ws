@@ -23,11 +23,6 @@
         .health-card h3 { font-size: 14px; color: #666; margin-bottom: 8px; }
         .health-card .status { font-weight: bold; font-size: 16px; }
         .health-card .response-time { color: #28a745; font-size: 12px; margin-top: 5px; }
-        .cache-summary { background: #e7f3ff; padding: 15px; border-radius: 6px; margin-top: 15px; }
-        .cache-summary h3 { font-size: 14px; color: #0066cc; margin-bottom: 10px; }
-        .cache-summary .stats { display: flex; gap: 30px; }
-        .cache-summary .stat { font-size: 13px; }
-        .cache-summary .stat strong { display: block; font-size: 20px; color: #333; }
         .endpoints-panel { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .endpoints-panel h2 { margin-bottom: 15px; font-size: 20px; }
         .endpoints-table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -109,28 +104,6 @@
                     {% if health_status.nginx_cache.total_size %}
                     <div class="response-time">{{ "%.1f"|format(health_status.nginx_cache.total_size / 1024 / 1024) }} MB</div>
                     {% endif %}
-                </div>
-            </div>
-
-            <div class="cache-summary">
-                <h3>Cache Statistics</h3>
-                <div class="stats">
-                    <div class="stat">
-                        <strong>{{ "%.1f"|format(cache_stats.total_size / 1024 / 1024) }} MB</strong>
-                        Total Size
-                    </div>
-                    <div class="stat">
-                        <strong>{{ cache_stats.total_files }}</strong>
-                        Total Files
-                    </div>
-                    <div class="stat">
-                        <strong>{{ "%.1f"|format(cache_stats.short_cache_size / 1024 / 1024) }} MB</strong>
-                        Short Cache (10min)
-                    </div>
-                    <div class="stat">
-                        <strong>{{ "%.1f"|format(cache_stats.daily_cache_size / 1024 / 1024) }} MB</strong>
-                        Daily Cache (7AM)
-                    </div>
                 </div>
             </div>
         </div>

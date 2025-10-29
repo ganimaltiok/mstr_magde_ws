@@ -188,7 +188,6 @@ class CacheManager:
                 'error': str or None
             }
         """
-        logger.info("get_cache_stats called")
         stats = {
             'total_size': 0,
             'short_cache_size': 0,
@@ -199,63 +198,46 @@ class CacheManager:
         
         try:
             # Try shortcache
-            logger.info(f"Checking NGINX_CACHE_SHORT: {self.settings.NGINX_CACHE_SHORT}")
             if self.settings.NGINX_CACHE_SHORT.exists():
-                logger.info(f"Short cache directory exists: {self.settings.NGINX_CACHE_SHORT}")
                 try:
                     short_size = self._get_directory_size(self.settings.NGINX_CACHE_SHORT)
                     short_files = self._count_files(self.settings.NGINX_CACHE_SHORT)
                     stats['short_cache_size'] = short_size
                     stats['total_size'] += short_size
                     stats['total_files'] += short_files
-                    logger.info(f"Short cache: {short_files} files, {short_size} bytes")
                 except PermissionError:
                     # Try with sudo
-                    logger.info("Permission denied for shortcache, trying sudo...")
                     size, files = self._get_cache_stats_with_sudo(self.settings.NGINX_CACHE_SHORT)
                     if size is not None:
                         stats['short_cache_size'] = size
                         stats['total_size'] += size
                         stats['total_files'] += files
-                        logger.info(f"Short cache (via sudo): {files} files, {size} bytes")
                     else:
-                        logger.warning("Sudo failed for short cache")
                         stats['error'] = 'Permission denied reading cache'
-            else:
-                logger.warning(f"Short cache directory does not exist: {self.settings.NGINX_CACHE_SHORT}")
             
             # Try dailycache
-            logger.info(f"Checking NGINX_CACHE_DAILY: {self.settings.NGINX_CACHE_DAILY}")
             if self.settings.NGINX_CACHE_DAILY.exists():
-                logger.info(f"Daily cache directory exists: {self.settings.NGINX_CACHE_DAILY}")
                 try:
                     daily_size = self._get_directory_size(self.settings.NGINX_CACHE_DAILY)
                     daily_files = self._count_files(self.settings.NGINX_CACHE_DAILY)
                     stats['daily_cache_size'] = daily_size
                     stats['total_size'] += daily_size
                     stats['total_files'] += daily_files
-                    logger.info(f"Daily cache: {daily_files} files, {daily_size} bytes")
                 except PermissionError:
                     # Try with sudo
-                    logger.info("Permission denied for dailycache, trying sudo...")
                     size, files = self._get_cache_stats_with_sudo(self.settings.NGINX_CACHE_DAILY)
                     if size is not None:
                         stats['daily_cache_size'] = size
                         stats['total_size'] += size
                         stats['total_files'] += files
-                        logger.info(f"Daily cache (via sudo): {files} files, {size} bytes")
                     else:
-                        logger.warning("Sudo failed for daily cache")
                         if not stats['error']:
                             stats['error'] = 'Permission denied reading cache'
-            else:
-                logger.warning(f"Daily cache directory does not exist: {self.settings.NGINX_CACHE_DAILY}")
         
         except Exception as e:
             logger.error(f"Failed to get cache stats: {e}", exc_info=True)
             stats['error'] = str(e)
         
-        logger.info(f"Returning cache stats: {stats}")
         return stats
     
     def _get_directory_size(self, path: Path) -> int:
