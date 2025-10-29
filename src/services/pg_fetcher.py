@@ -18,9 +18,17 @@ class PGFetcher:
     def _get_pool(self) -> psycopg2.pool.SimpleConnectionPool:
         """Get connection pool (lazy initialization)."""
         if self._connection_pool is None:
-            params = self.settings.pg_connection_params
-            if not params:
-                raise ValueError("PostgreSQL connection not configured")
+            # Build connection params from settings
+            if not self.settings.pg_host or not self.settings.pg_database:
+                raise ValueError("PostgreSQL connection not configured (missing PG_HOST or PG_DATABASE)")
+            
+            params = {
+                'host': self.settings.pg_host,
+                'port': self.settings.pg_port,
+                'database': self.settings.pg_database,
+                'user': self.settings.pg_user,
+                'password': self.settings.pg_password
+            }
             
             self._connection_pool = psycopg2.pool.SimpleConnectionPool(
                 minconn=1,
