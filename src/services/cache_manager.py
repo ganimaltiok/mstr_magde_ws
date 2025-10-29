@@ -77,25 +77,33 @@ class CacheManager:
                     cleared_paths.append(str(cache_path))
                     
                 except PermissionError as pe:
-                    # Try sudo fallback only on Linux (where sudo is configured with NOPASSWD)
+                    # Try sudo fallback (configured with NOPASSWD on production)
                     logger.warning(f"Permission denied for {cache_path}, attempting sudo fallback...")
                     
                     try:
-                        # Check if directory is empty first
-                        try:
-                            items = list(cache_path.iterdir())
-                            if not items:
-                                logger.info(f"Directory is empty (checked via sudo needed path): {cache_path}")
-                                cleared_paths.append(str(cache_path))
-                                continue
-                        except:
-                            pass  # Can't check, try sudo anyway
+                        # Use absolute path to sudo to avoid PATH issues
+                        sudo_cmd = '/usr/bin/sudo'
                         
-                        result = subprocess.run(
-                            ['sudo', 'find', str(cache_path), '-mindepth', '1', '-delete'],
+                        # First check if directory is empty using sudo
+                        check_result = subprocess.run(
+                            [sudo_cmd, 'find', str(cache_path), '-mindepth', '1', '-maxdepth', '1', '-print', '-quit'],
                             capture_output=True,
                             text=True,
-                            timeout=10,
+                            timeout=5,
+                            check=False
+                        )
+                        
+                        if check_result.returncode == 0 and not check_result.stdout.strip():
+                            logger.info(f"Directory is empty (checked with sudo): {cache_path}")
+                            cleared_paths.append(str(cache_path))
+                            continue
+                        
+                        # Clear the cache directory
+                        result = subprocess.run(
+                            [sudo_cmd, 'find', str(cache_path), '-mindepth', '1', '-delete'],
+                            capture_output=True,
+                            text=True,
+                            timeout=30,
                             check=False
                         )
                         
@@ -103,7 +111,7 @@ class CacheManager:
                             logger.info(f"Successfully cleared {cache_path} using sudo")
                             cleared_paths.append(str(cache_path))
                         else:
-                            error_msg = f"Sudo command failed for {cache_path}: {result.stderr}"
+                            error_msg = f"Sudo command failed for {cache_path}: {result.stderr or result.stdout}"
                             logger.error(error_msg)
                             errors.append(error_msg)
                     
