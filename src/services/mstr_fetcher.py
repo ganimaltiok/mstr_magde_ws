@@ -98,9 +98,6 @@ class MstrFetcher:
             offset = (page - 1) * per_page
             
             # Fetch from MSTR
-            import sys
-            print(f">>> Fetching from MSTR: dossier={dossier_id}, viz={viz_key}", file=sys.stderr, flush=True)
-            logger.info(f">>> Fetching from MSTR: dossier={dossier_id}, viz={viz_key}, filters={view_filter}")
             response = self.client.get_report_data(
                 dossier_id=dossier_id,
                 viz_key=viz_key,
@@ -108,35 +105,29 @@ class MstrFetcher:
                 limit=limit,
                 offset=offset
             )
-            print(f">>> MSTR response received OK", file=sys.stderr, flush=True)
-            logger.info(f">>> MSTR response received: {type(response)}, status={response.status_code if hasattr(response, 'status_code') else 'N/A'}")
             
             # Parse CSV response with encoding detection
             # Try UTF-16 first (MSTR standard), then UTF-8, then Latin-1
             df = None
             last_error = None
             
-            print(f">>> About to check content length", file=sys.stderr, flush=True)
-            logger.info(f"Response content length: {len(response.content)} bytes")
-            logger.info(f"Response headers: {response.headers.get('Content-Type', 'unknown')}")
-            
             for encoding in ['utf-16', 'utf-8', 'latin-1', 'utf-16-le', 'utf-16-be', 'iso-8859-1']:
                 try:
                     content = response.content.decode(encoding)
                     df = pd.read_csv(StringIO(content))
-                    logger.info(f"✓ Successfully decoded CSV with {encoding}, rows: {len(df)}")
+                    logger.debug(f"Successfully decoded CSV with {encoding}, rows: {len(df)}")
                     break
                 except UnicodeDecodeError as e:
                     last_error = f"{encoding}: UnicodeDecodeError at position {e.start}"
-                    logger.debug(f"✗ {last_error}")
+                    logger.debug(f"{last_error}")
                     continue
                 except pd.errors.ParserError as e:
                     last_error = f"{encoding}: ParserError - {str(e)[:100]}"
-                    logger.debug(f"✗ {last_error}")
+                    logger.debug(f"{last_error}")
                     continue
                 except Exception as e:
                     last_error = f"{encoding}: {type(e).__name__} - {str(e)[:100]}"
-                    logger.warning(f"✗ {last_error}")
+                    logger.debug(f"{last_error}")
                     continue
             
             if df is None:

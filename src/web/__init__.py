@@ -34,10 +34,9 @@ def create_app() -> Flask:
     # Log startup info
     logger = logging.getLogger(__name__)
     
-    # Setup request logging - TEMPORARILY DISABLED FOR DEBUGGING
-    logger.info("Request logging DISABLED for debugging")
-    # from web.request_logger import setup_request_logging
-    # setup_request_logging(app)
+    # Setup request logging
+    from web.request_logger import setup_request_logging
+    setup_request_logging(app)
     
     logger.info(f"MSTR Herald API starting on port {settings.PORT}")
     logger.info(f"Environment: {settings.FLASK_ENV}")

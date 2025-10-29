@@ -151,8 +151,6 @@ class DataFetcher:
         per_page: int
     ) -> DataFetchResult:
         """Fetch from MicroStrategy."""
-        logger.info(f"_fetch_mstr: config={config.name}, page={page}, per_page={per_page}, behavior={config.behavior}")
-        
         result = self.mstr_fetcher.fetch(
             endpoint_config=config,
             query_params=query_params,
@@ -161,18 +159,13 @@ class DataFetcher:
             per_page=per_page
         )
         
-        logger.info(f"MSTR fetcher returned: {len(result['data'])} rows, total={result['total_records']}")
-        
         # For cachemstr, data is fetched in full - paginate in memory
         if config.behavior == 'cachemstr':
             df = pd.DataFrame(result['data'])
-            logger.info(f"Created DataFrame with {len(df)} rows")
             
             paginated_df, pagination_info = paginate_dataframe(df, page, per_page)
-            logger.info(f"After pagination: {len(paginated_df)} rows, pagination={pagination_info}")
             
             paginated_records = paginated_df.to_dict('records')
-            logger.info(f"Returning {len(paginated_records)} records")
             
             return DataFetchResult(
                 data=paginated_records,

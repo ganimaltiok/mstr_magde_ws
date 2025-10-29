@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request, make_response, after_this_request
+from flask import Blueprint, jsonify, request, make_response
 from services.endpoint_config import get_config_store
 from services.data_fetcher import get_data_fetcher
 from datetime import datetime
@@ -8,16 +8,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 v3_bp = Blueprint('v3_api', __name__, url_prefix='/api/v3')
-
-
-@v3_bp.route('/test', methods=['GET'])
-def test_endpoint():
-    """Simple test endpoint to verify JSON responses work."""
-    return jsonify({
-        "status": "ok",
-        "message": "Test endpoint working",
-        "data": [{"id": 1, "name": "test"}]
-    })
 
 
 @v3_bp.route('/report/<report_name>', methods=['GET'])
@@ -82,8 +72,6 @@ def get_report(report_name: str, agency_code: str = None):
             per_page=per_page
         )
         
-        logger.info(f"v3_api: Fetched {len(result.data)} records for {report_name}, total={result.total_records}, pagination={result.pagination}")
-        
         # Determine data source
         if endpoint_config.is_mstr:
             data_source = 'microstrategy'
@@ -110,8 +98,6 @@ def get_report(report_name: str, agency_code: str = None):
         if result.has_error:
             response_data['info']['error'] = result.error
         
-        logger.info(f"Building JSON response with {len(response_data['data'])} records...")
-        
         # Set cache headers based on behavior
         cache_control = None
         if endpoint_config.cache_zone:
@@ -128,14 +114,6 @@ def get_report(report_name: str, agency_code: str = None):
             # No cache for live behaviors
             cache_control = 'no-store'
         
-        logger.info(f"Returning response with Cache-Control: {cache_control}")
-        
-        # Add logging AFTER response is sent
-        @after_this_request
-        def log_after_send(response):
-            logger.info("!!! after_this_request: Response was sent to client")
-            return response
-        
         # Use make_response to ensure proper response object
         response = make_response(jsonify(response_data))
         if cache_control:
@@ -143,7 +121,6 @@ def get_report(report_name: str, agency_code: str = None):
         if endpoint_config.cache_zone:
             response.headers['X-Cache-Zone'] = endpoint_config.cache_zone
         
-        logger.info(f"Response object created, type: {type(response)}, status: {response.status}")
         return response
     
     except Exception as e:
