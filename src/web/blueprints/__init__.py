@@ -23,6 +23,9 @@ def register_blueprints(app: Flask):
     from web.blueprints.admin_mstr import admin_mstr_bp
     app.register_blueprint(admin_mstr_bp)
     
+    from web.blueprints.admin_redis import admin_redis_bp
+    app.register_blueprint(admin_redis_bp)
+    
     # Health checks
     from web.blueprints.health import health_bp
     app.register_blueprint(health_bp)

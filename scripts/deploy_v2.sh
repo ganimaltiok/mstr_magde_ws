@@ -341,7 +341,7 @@ echo -e "${GREEN}[12/12] Updating supervisor configuration...${NC}"
 cat > "$SUPERVISOR_CONF" << EOF
 [program:venus]
 directory=$DEPLOY_DIR/src
-command=$VENV_DIR/bin/gunicorn --workers 3 --bind 127.0.0.1:$GUNICORN_PORT --timeout=300 app:app
+command=$VENV_DIR/bin/gunicorn --workers 3 --bind 127.0.0.1:$GUNICORN_PORT --timeout=1800 app:app
 autostart=true
 autorestart=true
 stopsignal=TERM

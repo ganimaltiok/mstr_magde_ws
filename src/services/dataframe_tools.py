@@ -127,6 +127,46 @@ def filter_by_agency(df: pd.DataFrame, agency_code: str | None) -> pd.DataFrame:
     return df
 
 
+def apply_filters(df: pd.DataFrame, filters: dict[str, str]) -> pd.DataFrame:
+    """
+    Apply filters to dataframe in-memory.
+    Used for Redis cached data where full dataset is stored.
+    
+    Args:
+        df: DataFrame to filter
+        filters: Dict of column_name -> value
+    
+    Returns:
+        Filtered DataFrame
+    """
+    if not filters or df.empty:
+        return df
+    
+    result = df.copy()
+    
+    for filter_key, filter_value in filters.items():
+        if not filter_value:
+            continue
+        
+        # Find matching column (case-insensitive)
+        matching_cols = [col for col in result.columns if col.lower() == filter_key.lower()]
+        
+        if not matching_cols:
+            continue
+        
+        column = matching_cols[0]
+        
+        try:
+            # String comparison (handles dates, numbers as strings)
+            mask = result[column].astype(str).str.lower() == str(filter_value).lower()
+            result = result[mask]
+        except Exception as e:
+            # If filtering fails, skip this filter
+            continue
+    
+    return result
+
+
 def dataframe_to_records(df: pd.DataFrame) -> list[dict[str, Any]]:
     if df.empty:
         return []
@@ -140,6 +180,7 @@ def dataframe_to_pretty_json(df: pd.DataFrame) -> str:
 
 
 __all__ = [
+    "apply_filters",
     "dataframe_to_pretty_json",
     "dataframe_to_records",
     "extract_cube_time",

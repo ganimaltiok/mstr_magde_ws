@@ -6,9 +6,12 @@ from services.endpoint_config import EndpointConfig
 from services.sql_fetcher import get_sql_fetcher
 from services.pg_fetcher import get_pg_fetcher
 from services.mstr_fetcher import get_mstr_fetcher
+from services.redis_cache_service import get_redis_cache_service
 from services.pagination import paginate_dataframe
+from services.dataframe_tools import apply_filters
 import logging
 import math
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +47,7 @@ class DataFetcher:
         self.sql_fetcher = get_sql_fetcher()
         self.pg_fetcher = get_pg_fetcher()
         self.mstr_fetcher = get_mstr_fetcher()
+        self.redis_cache = get_redis_cache_service()
     
     def fetch(
         self,
@@ -70,7 +74,13 @@ class DataFetcher:
             per_page = endpoint_config.per_page
         
         try:
-            # Route to appropriate fetcher based on source
+            # Check if Redis caching is enabled for this endpoint
+            if endpoint_config.redis_cache:
+                return self._fetch_with_redis(
+                    endpoint_config, query_params, info_type, page, per_page
+                )
+            
+            # Standard behavior (no Redis)
             if endpoint_config.is_sql:
                 return self._fetch_sql(endpoint_config, query_params, page, per_page)
             elif endpoint_config.is_pg:
@@ -83,6 +93,115 @@ class DataFetcher:
         except Exception as e:
             logger.error(f"Error fetching data for {endpoint_config.name}: {e}", exc_info=True)
             return self._error_result(endpoint_config, str(e), type(e).__name__)
+    
+    def _fetch_with_redis(
+        self,
+        config: EndpointConfig,
+        query_params: Dict[str, str],
+        info_type: str,
+        page: int,
+        per_page: int
+    ) -> DataFetchResult:
+        """
+        Fetch with Redis caching.
+        Caches full dataset, applies filters/pagination in-memory.
+        """
+        start_time = time.time()
+        
+        # Try Redis cache first
+        cached_data = self.redis_cache.get_cached_data(config.name)
+        
+        if cached_data is not None:
+            # Cache HIT: Apply filters and pagination in-memory
+            logger.info(f"Redis cache HIT for {config.name}")
+            df = pd.DataFrame(cached_data)
+            
+            # Apply filters if provided
+            if query_params:
+                df = apply_filters(df, query_params)
+            
+            # Paginate
+            paginated_df, pagination_info = paginate_dataframe(df, page, per_page)
+            
+            return DataFetchResult(
+                data=paginated_df.to_dict('records'),
+                total_records=len(df),
+                pagination=pagination_info,
+                columns=list(df.columns)
+            )
+        
+        # Cache MISS: Fetch full dataset from source
+        logger.info(f"Redis cache MISS for {config.name}, fetching from source")
+        
+        # Fetch full dataset (no filters, no pagination)
+        if config.is_sql:
+            full_data = self._fetch_sql_full(config)
+        elif config.is_pg:
+            full_data = self._fetch_pg_full(config)
+        elif config.is_mstr:
+            full_data = self._fetch_mstr_full(config, info_type)
+        else:
+            raise ValueError(f"Unknown source: {config.source}")
+        
+        fetch_duration_ms = int((time.time() - start_time) * 1000)
+        
+        # Store in Redis
+        self.redis_cache.set_cached_data(
+            config.name,
+            full_data['data'],
+            config.source,
+            fetch_duration_ms
+        )
+        
+        # Now apply filters and pagination
+        df = pd.DataFrame(full_data['data'])
+        
+        if query_params:
+            df = apply_filters(df, query_params)
+        
+        paginated_df, pagination_info = paginate_dataframe(df, page, per_page)
+        
+        return DataFetchResult(
+            data=paginated_df.to_dict('records'),
+            total_records=len(df),
+            pagination=pagination_info,
+            columns=full_data['columns']
+        )
+    
+    def _fetch_sql_full(self, config: EndpointConfig) -> Dict[str, Any]:
+        """Fetch full MSSQL dataset (no filters, no pagination)."""
+        schema = config.mssql.get('schema')
+        table = config.mssql.get('table')
+        database = config.mssql.get('database')
+        
+        if not schema or not table:
+            raise ValueError("MSSQL schema and table required")
+        
+        # Fetch with no filters, no pagination (page=1, per_page=999999)
+        result = self.sql_fetcher.fetch(schema, table, {}, 1, 999999, database)
+        return result
+    
+    def _fetch_pg_full(self, config: EndpointConfig) -> Dict[str, Any]:
+        """Fetch full PostgreSQL dataset (no filters, no pagination)."""
+        schema = config.postgresql.get('schema')
+        table = config.postgresql.get('table')
+        
+        if not schema or not table:
+            raise ValueError("PostgreSQL schema and table required")
+        
+        result = self.pg_fetcher.fetch(schema, table, {}, 1, 999999)
+        return result
+    
+    def _fetch_mstr_full(self, config: EndpointConfig, info_type: str) -> Dict[str, Any]:
+        """Fetch full MicroStrategy dataset (no filters, no pagination)."""
+        result = self.mstr_fetcher.fetch(
+            endpoint_config=config,
+            query_params={},  # No filters
+            info_type=info_type,
+            page=1,
+            per_page=999999
+        )
+        return result
     
     def _fetch_sql(
         self,

@@ -1,4 +1,9 @@
-# MSTR Herald v1 → v2 Migration Guide
+# MSTR Herald API Migration Guide
+
+## Latest: Redis Cache Enhancement (v3.1)
+See [REDIS_CACHE_IMPLEMENTATION.md](REDIS_CACHE_IMPLEMENTATION.md) for details on the optional Redis caching layer.
+
+## MSTR Herald API v2 → v3 Migration Guide
 
 ## Overview
 

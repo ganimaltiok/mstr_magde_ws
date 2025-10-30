@@ -91,7 +91,8 @@ def _build_config_from_form(data: dict) -> dict:
         'description': description,
         'pagination': {
             'per_page': int(data.get('per_page', 100))
-        }
+        },
+        'redis_cache': data.get('redis_cache') == 'on'  # Checkbox returns 'on' when checked
     }
     
     # SQL-specific config

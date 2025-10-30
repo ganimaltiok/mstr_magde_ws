@@ -109,6 +109,7 @@
         <div class="endpoints-panel">
             <h2>
                 Endpoints
+                <button onclick="refreshAllRedisCache()" class="btn btn-primary add-endpoint-btn" style="margin-right: 10px;">Refresh All Redis Cache</button>
                 <button onclick="clearAllCache()" class="btn btn-danger add-endpoint-btn" style="margin-right: 10px;">Clear Nginx Cache</button>
                 <a href="/admin/endpoints/create" class="btn btn-primary add-endpoint-btn">+ Add Endpoint</a>
             </h2>
@@ -118,6 +119,7 @@
                     <tr>
                         <th>Name</th>
                         <th>Source</th>
+                        <th>Redis Cache</th>
                         <th>Description</th>
                         <th>Sample URL</th>
                         <th>Actions</th>
@@ -128,6 +130,14 @@
                     <tr>
                         <td><strong>{{ endpoint.name }}</strong></td>
                         <td><span class="badge badge-{{ endpoint.source }}">{{ endpoint.source }}</span></td>
+                        <td>
+                            {% if endpoint.redis_cache %}
+                            <span class="badge" style="background: #d1f2eb; color: #0c6e54;">✓ Enabled</span>
+                            <div style="font-size: 11px; color: #666; margin-top: 3px;" id="redis_meta_{{ endpoint.name }}">-</div>
+                            {% else %}
+                            <span style="color: #999; font-size: 11px;">-</span>
+                            {% endif %}
+                        </td>
                         <td>{{ endpoint.description }}</td>
                         <td>
                             <div class="url-tester">
@@ -137,6 +147,9 @@
                         </td>
                         <td class="actions">
                             <a href="/admin/endpoints/edit/{{ endpoint.name }}" class="btn btn-secondary">Edit</a>
+                            {% if endpoint.redis_cache %}
+                            <button onclick="refreshRedisCache('{{ endpoint.name }}')" class="btn btn-primary" title="Refresh Redis Cache">Refresh</button>
+                            {% endif %}
                             <button onclick="deleteEndpoint('{{ endpoint.name }}')" class="btn btn-danger">Delete</button>
                         </td>
                     </tr>
@@ -245,6 +258,109 @@
                 alert('Error: ' + result.error);
             }
         }
+
+        async function refreshRedisCache(endpointName) {
+            if (!confirm(`Refresh Redis cache for "${endpointName}"?\n\nThis will clear the cache. Next request will fetch fresh data.`)) return;
+            
+            const button = event.target;
+            const originalText = button.textContent;
+            button.disabled = true;
+            button.textContent = 'Refreshing...';
+            
+            try {
+                const response = await fetch(`/api/admin/redis/refresh/${endpointName}`, {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert('✅ ' + result.message);
+                    location.reload();
+                } else {
+                    alert('❌ ' + result.message);
+                }
+            } catch (e) {
+                alert('❌ Error: ' + e.message);
+            } finally {
+                button.disabled = false;
+                button.textContent = originalText;
+            }
+        }
+
+        async function refreshAllRedisCache() {
+            if (!confirm('Refresh Redis cache for ALL endpoints?\n\nThis will clear Redis cache for all endpoints with redis_cache=true. Next requests will fetch fresh data.')) return;
+            
+            const button = event.target;
+            const originalText = button.textContent;
+            button.disabled = true;
+            button.textContent = 'Refreshing All...';
+            
+            try {
+                const response = await fetch('/api/admin/redis/refresh-all', {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    const summary = `${result.success_count}/${result.endpoints_processed} endpoints refreshed`;
+                    alert('✅ ' + result.message + '\n\n' + summary);
+                    location.reload();
+                } else {
+                    alert('❌ ' + result.message);
+                }
+            } catch (e) {
+                alert('❌ Error: ' + e.message);
+            } finally {
+                button.disabled = false;
+                button.textContent = originalText;
+            }
+        }
+
+        // Load Redis metadata for endpoints with redis_cache enabled
+        async function loadRedisMetadata() {
+            const endpoints = document.querySelectorAll('[id^="redis_meta_"]');
+            
+            for (const element of endpoints) {
+                const endpointName = element.id.replace('redis_meta_', '');
+                
+                try {
+                    const response = await fetch(`/api/admin/redis/metadata/${endpointName}`);
+                    const result = await response.json();
+                    
+                    if (response.ok && result.data) {
+                        const meta = result.data;
+                        const lastUpdated = new Date(meta.last_updated);
+                        const timeAgo = formatTimeAgo(lastUpdated);
+                        const ttlHours = Math.floor(meta.ttl_remaining / 3600);
+                        
+                        element.innerHTML = `${meta.record_count} records • ${timeAgo} • TTL: ${ttlHours}h`;
+                    } else {
+                        element.innerHTML = 'Not cached yet';
+                    }
+                } catch (e) {
+                    element.innerHTML = '-';
+                }
+            }
+        }
+
+        function formatTimeAgo(date) {
+            const seconds = Math.floor((new Date() - date) / 1000);
+            
+            if (seconds < 60) return `${seconds}s ago`;
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return `${minutes}m ago`;
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return `${hours}h ago`;
+            const days = Math.floor(hours / 24);
+            return `${days}d ago`;
+        }
+
+        // Load metadata on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadRedisMetadata();
+        });
     </script>
 </body>
 </html>

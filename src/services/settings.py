@@ -49,6 +49,12 @@ class Settings:
     NGINX_CACHE_SHORT: Path
     NGINX_CACHE_DAILY: Path
 
+    # Redis Cache
+    REDIS_HOST: str
+    REDIS_PORT: int
+    REDIS_DB: int
+    REDIS_TTL: int  # seconds (default 12 hours)
+
     # Logging
     LOG_LEVEL: str
     LOG_FILE: str
@@ -137,6 +143,12 @@ def get_settings() -> Settings:
         # Nginx Cache
         NGINX_CACHE_SHORT=_resolve_path(os.getenv('NGINX_CACHE_SHORT', '/var/cache/nginx/shortcache'), base_dir / 'shortcache'),
         NGINX_CACHE_DAILY=_resolve_path(os.getenv('NGINX_CACHE_DAILY', '/var/cache/nginx/dailycache'), base_dir / 'dailycache'),
+
+        # Redis Cache
+        REDIS_HOST=os.getenv('REDIS_HOST', 'localhost'),
+        REDIS_PORT=_parse_int(os.getenv('REDIS_PORT'), 6379, 'REDIS_PORT'),
+        REDIS_DB=_parse_int(os.getenv('REDIS_DB'), 0, 'REDIS_DB'),
+        REDIS_TTL=_parse_int(os.getenv('REDIS_TTL'), 43200, 'REDIS_TTL'),  # 12 hours
 
         # Logging
         LOG_LEVEL=os.getenv('LOG_LEVEL', 'INFO'),

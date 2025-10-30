@@ -74,6 +74,16 @@
                        value="{{ endpoint.per_page if endpoint else 100 }}" min="1" max="10000">
             </div>
 
+            <div class="form-group">
+                <label style="display: flex; align-items: center; cursor: pointer;">
+                    <input type="checkbox" id="redis_cache" name="redis_cache" 
+                           {{ 'checked' if endpoint and endpoint.redis_cache else '' }}
+                           style="margin-right: 8px; cursor: pointer;">
+                    <span>Enable Redis Cache (12 hours)</span>
+                </label>
+                <small>When enabled, full dataset is cached in Redis for 12 hours. Filters and pagination are applied in-memory. Provides faster response times and reduces load on data sources.</small>
+            </div>
+
             <!-- SQL Config Section -->
             <div id="sql-config" class="config-section">
                 <h3>MSSQL Configuration</h3>

@@ -15,6 +15,9 @@ class EndpointConfig:
         self.pagination = config.get('pagination', {})
         self.per_page = self.pagination.get('per_page', 100)
         
+        # Redis cache (optional 12-hour caching layer)
+        self.redis_cache = config.get('redis_cache', False)
+        
         # SQL/PG specific
         self.mssql = config.get('mssql', {})
         self.postgresql = config.get('postgresql', {})
@@ -75,7 +78,8 @@ class EndpointConfig:
         config = {
             'source': self.source,
             'description': self.description,
-            'pagination': {'per_page': self.per_page}
+            'pagination': {'per_page': self.per_page},
+            'redis_cache': self.redis_cache
         }
         
         if self.mssql:

@@ -100,12 +100,13 @@ python app.py  # Dev server on PORT 9101
 cd /home/administrator/venus/src
 /home/administrator/venv/bin/gunicorn \
   --workers 3 \
-  --bind 127.0.0.1:9101 \
-  --timeout=300 \
+  --bind 127.0.0.1:9102 \
+  --timeout=1800 \
   app:app
 ```
 
-**Port change:** v2 uses **9101** (was 8001 in v1) to run in parallel during migration.
+**Port change:** v2 uses **9102** (backend) behind nginx on **9101** (external).
+**Timeout:** Set to 1800 seconds (30 minutes) for long-running queries.
 
 ### Cache Management
 
