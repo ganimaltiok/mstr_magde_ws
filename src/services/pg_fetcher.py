@@ -191,6 +191,9 @@ class PGFetcher:
             # Remove double quotes from table/column names
             executable_query = executable_query.replace('"', '')
             
+            # Remove line breaks and extra whitespace
+            executable_query = ' '.join(executable_query.split())
+            
             # Convert datetime/timestamp columns to ISO format strings (like MSTR) BEFORE to_dict()
             for col in df.columns:
                 # Try to convert object columns to datetime
