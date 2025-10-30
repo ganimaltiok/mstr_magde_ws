@@ -126,8 +126,7 @@ def get_report(report_name: str, agency_code: str = None):
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
         if cache_control:
             response.headers['Cache-Control'] = cache_control
-        if endpoint_config.cache_zone:
-            response.headers['X-Cache-Zone'] = endpoint_config.cache_zone
+        # X-Cache-Zone header is added by nginx, no need to add from Flask
         
         return response
     
