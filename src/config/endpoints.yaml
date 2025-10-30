@@ -1,20 +1,4 @@
 endpoints:
-  pg_test_cached:
-    behavior: cachepg
-    description: 'PostgreSQL cached test endpoint'
-    pagination:
-      per_page: 10
-    postgresql:
-      schema: mg_flow
-      table: vp_test
-  pg_test_live:
-    behavior: livepg
-    description: 'PostgreSQL live test endpoint'
-    pagination:
-      per_page: 10
-    postgresql:
-      schema: mg_flow
-      table: vp_test
   acente_ekstresi_devreden:
     behavior: cachemstr
     description: ''

@@ -15,7 +15,24 @@ echo ""
 
 echo "[1/5] Pulling latest code..."
 cd "$DEPLOY_DIR"
+
+# Stash local changes to endpoints.yaml if they exist
+if git diff --quiet src/config/endpoints.yaml; then
+    echo "No local changes to endpoints.yaml"
+else
+    echo "Stashing local endpoints.yaml changes..."
+    git stash push -m "Auto-stash endpoints.yaml before update" src/config/endpoints.yaml
+    STASHED=1
+fi
+
 git pull origin venus_v2
+
+# Restore stashed endpoints.yaml if we stashed it
+if [ "$STASHED" = "1" ]; then
+    echo "Restoring local endpoints.yaml..."
+    git stash pop
+fi
+
 echo "✓ Code updated"
 
 echo ""
