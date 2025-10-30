@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 """
-Test Redis connectivity and basic operations.
+Test Redis cache for MSTR Herald v3 p10_tekliflerim endpoint.
+
+This script tests:
+1. Redis connectivity
+2. Cache key generation
+3. Cache write/read operations
+4. TTL verification
 
 Usage:
     python scripts/test_redis.py [host] [port]
@@ -8,11 +14,11 @@ Usage:
 Examples:
     python scripts/test_redis.py                    # Test localhost:6379
     python scripts/test_redis.py localhost 6379     # Explicit
-    python scripts/test_redis.py 172.25.8.150 6379  # Remote
 """
 
 import sys
 import json
+import time
 from datetime import datetime
 
 try:
@@ -20,6 +26,13 @@ try:
 except ImportError:
     print("❌ Redis package not installed")
     print("Install: pip install redis")
+    sys.exit(1)
+
+try:
+    import requests
+except ImportError:
+    print("❌ Requests package not installed")
+    print("Install: pip install requests")
     sys.exit(1)
 
 
@@ -79,20 +92,89 @@ def test_redis_connection(host='localhost', port=6379, db=0):
         used_memory = memory_info.get('used_memory_human', 'unknown')
         print(f"  ✓ Used memory: {used_memory}")
         
-        # Check if any v3 cache keys exist
+        # Test p10_tekliflerim endpoint caching
         print("\n" + "=" * 70)
-        print("Checking for existing v3 cache keys...")
+        print("Testing p10_tekliflerim endpoint Redis cache...")
+        print("=" * 70)
+        
+        # Clear any existing cache for this endpoint
+        endpoint_pattern = "v3:p10_tekliflerim:*"
+        existing_keys = client.keys(endpoint_pattern)
+        if existing_keys:
+            print(f"\n[Cleanup] Deleting {len(existing_keys)} existing cache keys...")
+            for key in existing_keys:
+                client.delete(key)
+            print("  ✓ Cache cleared")
+        
+        # Make first request (should cache)
+        print("\n[Request 1] Making API call to cache data...")
+        url = "http://localhost:9101/api/v3/report/p10_tekliflerim"
+        params = {"agency": "100100"}
+        
+        try:
+            start = time.time()
+            response = requests.get(url, params=params, timeout=60)
+            duration = time.time() - start
+            
+            if response.status_code == 200:
+                print(f"  ✓ Request successful ({duration:.2f}s)")
+                data = response.json()
+                record_count = len(data.get('data', []))
+                print(f"  ✓ Records: {record_count}")
+            else:
+                print(f"  ⚠ Request failed: {response.status_code}")
+                print(f"  Response: {response.text[:200]}")
+        except Exception as e:
+            print(f"  ❌ Request error: {e}")
+        
+        # Wait a moment for cache write
+        time.sleep(1)
+        
+        # Check if cache was created
+        print("\n[Verification] Checking Redis for cached data...")
+        cached_keys = client.keys(endpoint_pattern)
+        
+        if cached_keys:
+            print(f"  ✓ Found {len(cached_keys)} cache key(s)")
+            for key in cached_keys:
+                key_str = key.decode('utf-8') if isinstance(key, bytes) else key
+                ttl = client.ttl(key)
+                ttl_hours = ttl / 3600
+                
+                # Get cached data size
+                cached_data = client.get(key)
+                if cached_data:
+                    size_kb = len(cached_data) / 1024
+                    try:
+                        parsed = json.loads(cached_data.decode('utf-8'))
+                        cached_records = len(parsed.get('data', []))
+                        print(f"\n  Key: {key_str}")
+                        print(f"  TTL: {ttl}s ({ttl_hours:.1f} hours)")
+                        print(f"  Size: {size_kb:.2f} KB")
+                        print(f"  Records: {cached_records}")
+                    except:
+                        print(f"  Key: {key_str} (binary data, {size_kb:.2f} KB)")
+        else:
+            print("  ⚠ No cache keys found!")
+            print("\n  Possible reasons:")
+            print("    1. redis_cache is not enabled for p10_tekliflerim in endpoints.yaml")
+            print("    2. Redis connection failed in Flask app")
+            print("    3. Check Flask logs: sudo tail -50 /var/log/venus/error.log")
+        
+        # Check all v3 cache keys
+        print("\n" + "=" * 70)
+        print("All v3 cache keys in Redis:")
         v3_keys = client.keys("v3:*")
         if v3_keys:
-            print(f"  ✓ Found {len(v3_keys)} v3 cache keys")
-            for i, key in enumerate(v3_keys[:5], 1):
+            print(f"  ✓ Found {len(v3_keys)} total v3 cache keys")
+            for i, key in enumerate(v3_keys[:10], 1):
                 key_str = key.decode('utf-8') if isinstance(key, bytes) else key
                 ttl = client.ttl(key)
                 print(f"    {i}. {key_str} (TTL: {ttl}s)")
-            if len(v3_keys) > 5:
-                print(f"    ... and {len(v3_keys) - 5} more")
+            if len(v3_keys) > 10:
+                print(f"    ... and {len(v3_keys) - 10} more")
         else:
-            print("  ℹ No v3 cache keys found (this is normal for a fresh setup)")
+            print("  ℹ No v3 cache keys found")
         
         # Cleanup
         print("\n" + "=" * 70)
