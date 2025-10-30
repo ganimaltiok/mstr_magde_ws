@@ -79,14 +79,13 @@ endpoints:
       per_page: 100
   kampanya_yangin_2025:
     behavior: cachemstr
-    description: ''
+    description: 'MSTR: WS_Kampanya Yangin 2025'
     mstr:
-      cube_id: 1076A4F2473F243769B9CDA8E3621249
       dossier_id: A6CEF7024ED004189A076982339E3122
       filter_mappings:
         agency_code: WBED0CCCE9F9F463B9F75E9002565A7B7
       viz_keys:
-        detail: null
+        detail: ''
         summary: W41BBD592D247416C8D94378FCA1F6F05
     pagination:
       per_page: 100
