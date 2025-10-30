@@ -39,11 +39,11 @@ class PGFetcher:
             logger.info(f"Creating PostgreSQL engine for {host}:{port}/{database}")
             
             # Use NullPool to avoid connection pooling issues
-            # echo=True logs all SQL statements
+            # echo=False disables SQLAlchemy query logging (we log queries manually)
             self._engine = create_engine(
                 connection_string,
                 poolclass=NullPool,
-                echo=True
+                echo=False
             )
         return self._engine
     
@@ -198,10 +198,13 @@ class PGFetcher:
             for col in df.columns:
                 # Try to convert object columns to datetime
                 if df[col].dtype == 'object':
+                    # Try to infer datetime, but check if conversion actually worked
                     try:
-                        # Attempt to parse as datetime
-                        df[col] = pd.to_datetime(df[col], errors='ignore')
-                    except:
+                        converted = pd.to_datetime(df[col], errors='coerce')
+                        # Only keep conversion if at least one value was successfully parsed
+                        if converted.notna().any():
+                            df[col] = converted
+                    except Exception:
                         pass
                 
                 # Now check if it's a datetime type and convert to ISO string
