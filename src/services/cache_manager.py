@@ -14,9 +14,9 @@ class CacheManager:
     
     def __init__(self):
         self.settings = get_settings()
+        # Unified cache path (10-minute cache for all endpoints)
         self.cache_paths = [
-            self.settings.NGINX_CACHE_SHORT,
-            self.settings.NGINX_CACHE_DAILY
+            Path('/var/cache/nginx/apicache')
         ]
     
     def purge_all(self) -> Dict[str, Any]:
@@ -177,62 +177,41 @@ class CacheManager:
     
     def get_cache_stats(self) -> Dict[str, Any]:
         """
-        Get cache statistics.
+        Get cache statistics for unified cache.
         
         Returns:
             {
                 'total_size': int,
-                'short_cache_size': int,
-                'daily_cache_size': int,
+                'cache_size': int,
                 'total_files': int,
                 'error': str or None
             }
         """
         stats = {
             'total_size': 0,
-            'short_cache_size': 0,
-            'daily_cache_size': 0,
+            'cache_size': 0,
             'total_files': 0,
             'error': None
         }
         
         try:
-            # Try shortcache
-            if self.settings.NGINX_CACHE_SHORT.exists():
+            cache_path = self.cache_paths[0]  # Unified cache
+            if cache_path.exists():
                 try:
-                    short_size = self._get_directory_size(self.settings.NGINX_CACHE_SHORT)
-                    short_files = self._count_files(self.settings.NGINX_CACHE_SHORT)
-                    stats['short_cache_size'] = short_size
-                    stats['total_size'] += short_size
-                    stats['total_files'] += short_files
+                    cache_size = self._get_directory_size(cache_path)
+                    cache_files = self._count_files(cache_path)
+                    stats['cache_size'] = cache_size
+                    stats['total_size'] = cache_size
+                    stats['total_files'] = cache_files
                 except PermissionError:
                     # Try with sudo
-                    size, files = self._get_cache_stats_with_sudo(self.settings.NGINX_CACHE_SHORT)
+                    size, files = self._get_cache_stats_with_sudo(cache_path)
                     if size is not None:
-                        stats['short_cache_size'] = size
-                        stats['total_size'] += size
-                        stats['total_files'] += files
+                        stats['cache_size'] = size
+                        stats['total_size'] = size
+                        stats['total_files'] = files
                     else:
                         stats['error'] = 'Permission denied reading cache'
-            
-            # Try dailycache
-            if self.settings.NGINX_CACHE_DAILY.exists():
-                try:
-                    daily_size = self._get_directory_size(self.settings.NGINX_CACHE_DAILY)
-                    daily_files = self._count_files(self.settings.NGINX_CACHE_DAILY)
-                    stats['daily_cache_size'] = daily_size
-                    stats['total_size'] += daily_size
-                    stats['total_files'] += daily_files
-                except PermissionError:
-                    # Try with sudo
-                    size, files = self._get_cache_stats_with_sudo(self.settings.NGINX_CACHE_DAILY)
-                    if size is not None:
-                        stats['daily_cache_size'] = size
-                        stats['total_size'] += size
-                        stats['total_files'] += files
-                    else:
-                        if not stats['error']:
-                            stats['error'] = 'Permission denied reading cache'
         
         except Exception as e:
             logger.error(f"Failed to get cache stats: {e}", exc_info=True)

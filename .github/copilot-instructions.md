@@ -9,7 +9,7 @@ Flask REST API that provides unified access to MicroStrategy dossiers, MSSQL, an
 - `src/mstr_herald/` → MicroStrategy API client wrapper
 - `src/config/endpoints.yaml` → Single source of truth for all endpoint definitions
 
-## Critical Architecture Changes (v1 → v2)
+## Critical Architecture Changes (v1 → v2 → v3)
 
 ### ❌ REMOVED (v1)
 - Redis cache backend (`services/cache_service.py`)
@@ -29,18 +29,24 @@ Flask REST API that provides unified access to MicroStrategy dossiers, MSSQL, an
 - **Access logging service** (request frequency tracking)
 - `endpoints.yaml` configuration format
 
-## Data Source Behaviors
+### ✅ NEW (v3 - Current)
+- **Simplified 3-source system** (mssql, postgresql, microstrategy)
+- **Uniform 10-minute caching** for all endpoints via nginx
+- **Single cache zone** (apicache) - no more separate short/daily caches
+- **Source field** replaces behavior field in configs
+- All caching is mandatory and consistent
 
-Each endpoint configured in `endpoints.yaml` has one of 6 behaviors:
+## Data Sources
 
-| Behavior | Source | Caching | Cache Duration | Server-Side Filtering |
-|----------|--------|---------|----------------|----------------------|
-| `livesql` | MSSQL | None | N/A | ✅ SQL WHERE clauses |
-| `cachesql` | MSSQL | nginx | 10 minutes | ✅ SQL WHERE clauses |
-| `livepg` | PostgreSQL | None | N/A | ✅ SQL WHERE clauses |
-| `cachepg` | PostgreSQL | nginx | 10 minutes | ✅ SQL WHERE clauses |
-| `livemstr` | MicroStrategy | None | N/A | ✅ MSTR filter API |
-| `cachemstr` | MicroStrategy | nginx | Until 7 AM Istanbul | ✅ MSTR filter API |
+Each endpoint configured in `endpoints.yaml` has one of 3 sources:
+
+| Source | Description | Caching | Cache Duration | Server-Side Filtering |
+|--------|-------------|---------|----------------|----------------------|
+| `mssql` | Microsoft SQL Server | nginx | 10 minutes | ✅ SQL WHERE clauses |
+| `postgresql` | PostgreSQL | nginx | 10 minutes | ✅ SQL WHERE clauses |
+| `microstrategy` | MicroStrategy Dossiers | nginx | 10 minutes | ✅ MSTR filter API |
+
+**All endpoints are cached uniformly via nginx for 10 minutes.** No live/cached distinction exists anymore.
 
 **Key principle:** Filtering happens **before** data is fetched, not after.
 
@@ -126,16 +132,15 @@ curl -X POST http://localhost:8000/admin/cache/purge \
 ```
 
 **Cache refresh is automatic:**
-- `cachesql`, `cachepg`: First request after 10 min expiry rebuilds cache
-- `cachemstr`: First request after 7 AM Istanbul rebuilds cache
+- All sources: First request after 10 min expiry rebuilds cache
 
 ### Adding a New Endpoint
 
-**v2 Admin UI (recommended):**
+**Admin UI (recommended):**
 1. Navigate to `/admin/endpoints/create`
 2. Fill endpoint name (URL slug)
-3. Select behavior (livesql, cachesql, livepg, cachepg, livemstr, cachemstr)
-4. **For SQL/PG:** Enter schema and table name
+3. Select source (mssql, postgresql, microstrategy)
+4. **For SQL/PG:** Enter schema and table name (optionally database for cross-database queries)
 5. **For MSTR:** Enter dossier ID → Click "Gather Info" → Auto-populate viz keys and filters
 6. Save
 
@@ -144,7 +149,7 @@ curl -X POST http://localhost:8000/admin/cache/purge \
 # src/config/endpoints.yaml
 endpoints:
   new_report:
-    behavior: cachemstr
+    source: microstrategy
     description: "My new report"
     pagination:
       per_page: 100
@@ -180,7 +185,7 @@ Changes are **immediate** (no restart needed).
 endpoints:
   # MSTR example
   sales_summary:
-    behavior: cachemstr
+    source: microstrategy
     description: "Daily sales summary"
     pagination:
       per_page: 100
@@ -196,17 +201,18 @@ endpoints:
   
   # SQL example
   inventory:
-    behavior: livesql
-    description: "Real-time inventory"
+    source: mssql
+    description: "Inventory data"
     pagination:
       per_page: 50
     mssql:
       schema: "dbo"
       table: "inventory"
+      database: "WinsureLive"  # Optional - cross-database queries
   
   # PostgreSQL example
   customers:
-    behavior: cachepg
+    source: postgresql
     description: "Customer master"
     pagination:
       per_page: 200
@@ -217,6 +223,6 @@ endpoints:
 
 ## Key Conventions
 
-### Agency Filtering (v2)
+### Agency Filtering
 
 **No longer special-cased.** Agency filtering is just another server-side filter:

@@ -112,7 +112,7 @@
         <div class="endpoints-panel">
             <h2>
                 Endpoints
-                <button onclick="clearAllCache()" class="btn btn-danger add-endpoint-btn" style="margin-right: 10px;">Clear All Cache</button>
+                <button onclick="clearAllCache()" class="btn btn-danger add-endpoint-btn" style="margin-right: 10px;">Clear Nginx Cache</button>
                 <a href="/admin/endpoints/create" class="btn btn-primary add-endpoint-btn">+ Add Endpoint</a>
             </h2>
             
@@ -120,7 +120,7 @@
                 <thead>
                     <tr>
                         <th>Name</th>
-                        <th>Behavior</th>
+                        <th>Source</th>
                         <th>Description</th>
                         <th>Sample URL</th>
                         <th>Actions</th>
@@ -130,7 +130,7 @@
                     {% for endpoint in endpoints %}
                     <tr>
                         <td><strong>{{ endpoint.name }}</strong></td>
-                        <td><span class="badge badge-{{ endpoint.behavior }}">{{ endpoint.behavior }}</span></td>
+                        <td><span class="badge badge-{{ endpoint.source }}">{{ endpoint.source }}</span></td>
                         <td>{{ endpoint.description }}</td>
                         <td>
                             <div class="url-tester">
@@ -157,7 +157,7 @@
         }
 
         async function clearAllCache() {
-            if (!confirm('Clear ALL cache (both short and daily cache)?\n\nThis will clear cached data for all endpoints.')) return;
+            if (!confirm('Clear nginx cache for all endpoints?\n\nThis will clear the 10-minute cache for all endpoints.')) return;
             
             const button = event.target;
             const originalText = button.textContent;

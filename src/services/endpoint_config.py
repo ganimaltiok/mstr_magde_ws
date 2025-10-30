@@ -9,7 +9,8 @@ class EndpointConfig:
     
     def __init__(self, name: str, config: Dict[str, Any]):
         self.name = name
-        self.behavior = config.get('behavior', 'livemstr')
+        # Support both 'source' (new) and 'behavior' (backward compatibility)
+        self.source = config.get('source', self._map_behavior_to_source(config.get('behavior', 'microstrategy')))
         self.description = config.get('description', '')
         self.pagination = config.get('pagination', {})
         self.per_page = self.pagination.get('per_page', 100)
@@ -20,40 +21,59 @@ class EndpointConfig:
         
         # MSTR specific
         self.mstr = config.get('mstr', {})
-        
+    
+    @staticmethod
+    def _map_behavior_to_source(behavior: str) -> str:
+        """Map old behavior values to new source values for backward compatibility."""
+        if behavior in ['livesql', 'cachesql']:
+            return 'mssql'
+        elif behavior in ['livepg', 'cachepg']:
+            return 'postgresql'
+        elif behavior in ['livemstr', 'cachemstr']:
+            return 'microstrategy'
+        return behavior  # Return as-is if already a source value
+    
+    @property
+    def behavior(self) -> str:
+        """Backward compatibility property - maps source to old behavior."""
+        # All sources are now cached via nginx
+        if self.source == 'mssql':
+            return 'cachesql'
+        elif self.source == 'postgresql':
+            return 'cachepg'
+        elif self.source == 'microstrategy':
+            return 'cachemstr'
+        return self.source
+    
     @property
     def is_cached(self) -> bool:
-        """Check if this endpoint uses caching."""
-        return self.behavior in ['cachesql', 'cachepg', 'cachemstr']
+        """Check if this endpoint uses caching - always True now (nginx caching)."""
+        return True
     
     @property
     def is_mstr(self) -> bool:
         """Check if this endpoint uses MicroStrategy."""
-        return self.behavior in ['livemstr', 'cachemstr']
+        return self.source == 'microstrategy'
     
     @property
     def is_sql(self) -> bool:
         """Check if this endpoint uses MSSQL."""
-        return self.behavior in ['livesql', 'cachesql']
+        return self.source == 'mssql'
     
     @property
     def is_pg(self) -> bool:
         """Check if this endpoint uses PostgreSQL."""
-        return self.behavior in ['livepg', 'cachepg']
+        return self.source == 'postgresql'
     
     @property
-    def cache_zone(self) -> Optional[str]:
-        """Get nginx cache zone name."""
-        if self.behavior in ['cachesql', 'cachepg']:
-            return 'shortcache'
-        elif self.behavior == 'cachemstr':
-            return 'dailycache'
-        return None
+    def cache_zone(self) -> str:
+        """Get nginx cache zone name - always 'shortcache' now (10 minutes)."""
+        return 'shortcache'
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for YAML serialization."""
         config = {
-            'behavior': self.behavior,
+            'source': self.source,
             'description': self.description,
             'pagination': {'per_page': self.per_page}
         }

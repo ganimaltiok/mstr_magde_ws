@@ -54,7 +54,7 @@ class DataFetcher:
         per_page: Optional[int] = None
     ) -> DataFetchResult:
         """
-        Fetch data based on endpoint behavior.
+        Fetch data based on endpoint source.
         
         Args:
             endpoint_config: Endpoint configuration
@@ -70,7 +70,7 @@ class DataFetcher:
             per_page = endpoint_config.per_page
         
         try:
-            # Route to appropriate fetcher
+            # Route to appropriate fetcher based on source
             if endpoint_config.is_sql:
                 return self._fetch_sql(endpoint_config, query_params, page, per_page)
             elif endpoint_config.is_pg:
@@ -78,7 +78,7 @@ class DataFetcher:
             elif endpoint_config.is_mstr:
                 return self._fetch_mstr(endpoint_config, query_params, info_type, page, per_page)
             else:
-                raise ValueError(f"Unknown behavior: {endpoint_config.behavior}")
+                raise ValueError(f"Unknown source: {endpoint_config.source}")
         
         except Exception as e:
             logger.error(f"Error fetching data for {endpoint_config.name}: {e}", exc_info=True)
@@ -163,35 +163,19 @@ class DataFetcher:
             per_page=per_page
         )
         
-        # For cachemstr, data is fetched in full - paginate in memory
-        if config.behavior == 'cachemstr':
-            df = pd.DataFrame(result['data'])
-            
-            paginated_df, pagination_info = paginate_dataframe(df, page, per_page)
-            
-            paginated_records = paginated_df.to_dict('records')
-            
-            return DataFetchResult(
-                data=paginated_records,
-                total_records=result['total_records'],
-                pagination=pagination_info,
-                columns=result['columns']
-            )
-        else:
-            # For livemstr, pagination already done server-side
-            total_pages = math.ceil(result['total_records'] / per_page) if per_page > 0 else 1
-            
-            return DataFetchResult(
-                data=result['data'],
-                total_records=result['total_records'],
-                pagination={
-                    'page': page,
-                    'per_page': per_page,
-                    'total_pages': total_pages,
-                    'total_records': result['total_records']
-                },
-                columns=result['columns']
-            )
+        # All MSTR data is now cached via nginx, fetch in full and paginate in memory
+        df = pd.DataFrame(result['data'])
+        
+        paginated_df, pagination_info = paginate_dataframe(df, page, per_page)
+        
+        paginated_records = paginated_df.to_dict('records')
+        
+        return DataFetchResult(
+            data=paginated_records,
+            total_records=result['total_records'],
+            pagination=pagination_info,
+            columns=result['columns']
+        )
     
     def _error_result(
         self,

@@ -68,8 +68,8 @@
             <h3>⚠️ Cache Purge Actions</h3>
             
             <div class="action-group">
-                <button class="btn btn-danger" onclick="purgeAllCache()">Clear All Cache</button>
-                <div class="warning-text">This will clear all cached data for all endpoints. Use with caution!</div>
+                <button class="btn btn-danger" onclick="purgeAllCache()">Clear Nginx Cache</button>
+                <div class="warning-text">This will clear all nginx-cached data for all endpoints (10 min cache). Use with caution!</div>
             </div>
 
             <div class="action-group" style="margin-top: 20px;">
@@ -86,8 +86,8 @@
         </div>
 
         <div style="padding: 20px; background: #e7f3ff; border-radius: 6px; font-size: 13px; color: #004085;">
-            <strong>Note:</strong> Cache purge is immediate. The next request to the endpoint will fetch fresh data and rebuild the cache.
-            For cached behaviors (cachesql, cachepg, cachemstr), this may cause slower response times until the cache is rebuilt.
+            <strong>Note:</strong> Cache purge is immediate. The next request to the endpoint will fetch fresh data and rebuild the nginx cache (10 minutes).
+            This may cause slower response times until the cache is rebuilt.
         </div>
     </div>
 
