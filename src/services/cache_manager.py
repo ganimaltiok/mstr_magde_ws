@@ -14,10 +14,19 @@ class CacheManager:
     
     def __init__(self):
         self.settings = get_settings()
-        # Unified cache path (10-minute cache for all endpoints)
-        self.cache_paths = [
-            Path('/var/cache/nginx/apicache')
-        ]
+        # Check for v3 unified cache path first, fallback to v2 paths if not found
+        apicache_path = Path('/var/cache/nginx/apicache')
+        
+        if apicache_path.exists():
+            # v3 unified cache
+            self.cache_paths = [apicache_path]
+        else:
+            # v2 legacy paths (backward compatibility)
+            logger.info("Using legacy v2 cache paths (apicache not found)")
+            self.cache_paths = [
+                Path('/var/cache/nginx/shortcache'),
+                Path('/var/cache/nginx/dailycache')
+            ]
     
     def purge_all(self) -> Dict[str, Any]:
         """
@@ -177,7 +186,7 @@ class CacheManager:
     
     def get_cache_stats(self) -> Dict[str, Any]:
         """
-        Get cache statistics for unified cache.
+        Get cache statistics (supports both v2 and v3 cache structures).
         
         Returns:
             {
@@ -195,23 +204,28 @@ class CacheManager:
         }
         
         try:
-            cache_path = self.cache_paths[0]  # Unified cache
-            if cache_path.exists():
+            # Sum stats from all cache paths (v3 has 1, v2 has 2)
+            for cache_path in self.cache_paths:
+                if not cache_path.exists():
+                    logger.debug(f"Cache path does not exist: {cache_path}")
+                    continue
+                    
                 try:
                     cache_size = self._get_directory_size(cache_path)
                     cache_files = self._count_files(cache_path)
-                    stats['cache_size'] = cache_size
-                    stats['total_size'] = cache_size
-                    stats['total_files'] = cache_files
+                    stats['cache_size'] += cache_size
+                    stats['total_size'] += cache_size
+                    stats['total_files'] += cache_files
                 except PermissionError:
                     # Try with sudo
                     size, files = self._get_cache_stats_with_sudo(cache_path)
                     if size is not None:
-                        stats['cache_size'] = size
-                        stats['total_size'] = size
-                        stats['total_files'] = files
+                        stats['cache_size'] += size
+                        stats['total_size'] += size
+                        stats['total_files'] += files
                     else:
-                        stats['error'] = 'Permission denied reading cache'
+                        if not stats['error']:
+                            stats['error'] = 'Permission denied reading cache'
         
         except Exception as e:
             logger.error(f"Failed to get cache stats: {e}", exc_info=True)
