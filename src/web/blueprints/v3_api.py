@@ -88,13 +88,11 @@ def get_report(report_name: str, agency_code: str = None):
             "info": {
                 "report_name": report_name,
                 "info_type": info_type,
+                "cache_hit": False,  # Always False when Flask generates response; check X-Cache-Status header for actual status
                 "refreshed_at": datetime.now(istanbul_tz).isoformat(),
                 "data_source": data_source
             }
         }
-        
-        # Note: cache_hit status is available in X-Cache-Status response header
-        # HIT = served from cache, MISS = freshly generated, BYPASS = cache bypassed
         
         # Add query info for PostgreSQL/SQL endpoints
         if result.query:
