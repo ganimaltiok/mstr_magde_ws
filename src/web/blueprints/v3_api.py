@@ -97,8 +97,6 @@ def get_report(report_name: str, agency_code: str = None):
         # Add query info for PostgreSQL/SQL endpoints
         if result.query:
             response_data['info']['query'] = result.query
-        if result.params:
-            response_data['info']['params'] = result.params
         
         # Add error if present
         if result.has_error:

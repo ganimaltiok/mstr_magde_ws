@@ -23,8 +23,7 @@ class DataFetchResult:
         pagination: Dict[str, int],
         columns: list,
         error: Optional[Dict[str, Any]] = None,
-        query: Optional[str] = None,
-        params: Optional[Dict[str, Any]] = None
+        query: Optional[str] = None
     ):
         self.data = data
         self.total_records = total_records
@@ -32,7 +31,6 @@ class DataFetchResult:
         self.columns = columns
         self.error = error
         self.query = query
-        self.params = params
     
     @property
     def has_error(self) -> bool:
@@ -144,8 +142,7 @@ class DataFetcher:
                 'total_records': result['total_records']
             },
             columns=result['columns'],
-            query=result.get('query'),
-            params=result.get('params')
+            query=result.get('query')
         )
     
     def _fetch_mstr(

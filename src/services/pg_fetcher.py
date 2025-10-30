@@ -176,6 +176,21 @@ class PGFetcher:
             logger.info(f"PostgreSQL SELECT query: {data_sql} | Params: {params_with_pagination}")
             df = pd.read_sql(text(data_sql), engine, params=params_with_pagination)
             
+            # Build executable query (replace parameters and remove double quotes)
+            executable_query = data_sql
+            for param_name, param_value in params_with_pagination.items():
+                # Format value for SQL
+                if isinstance(param_value, str):
+                    formatted_value = f"'{param_value}'"
+                elif param_value is None:
+                    formatted_value = "NULL"
+                else:
+                    formatted_value = str(param_value)
+                executable_query = executable_query.replace(f':{param_name}', formatted_value)
+            
+            # Remove double quotes from table/column names
+            executable_query = executable_query.replace('"', '')
+            
             # Convert datetime/timestamp columns to ISO format strings (like MSTR) BEFORE to_dict()
             for col in df.columns:
                 # Try to convert object columns to datetime
@@ -198,8 +213,7 @@ class PGFetcher:
                 'data': df.to_dict('records'),
                 'total_records': total_records,
                 'columns': df.columns.tolist(),
-                'query': data_sql.strip(),
-                'params': params_with_pagination
+                'query': executable_query.strip()
             }
         
         except Exception as e:
