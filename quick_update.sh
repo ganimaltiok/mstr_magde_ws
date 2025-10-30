@@ -13,19 +13,33 @@ DEPLOY_DIR="/home/administrator/venus"
 echo -e "${GREEN}Quick Update - Venus v2${NC}"
 echo ""
 
-echo "[1/4] Pulling latest code..."
+echo "[1/5] Pulling latest code..."
 cd "$DEPLOY_DIR"
 git pull origin venus_v2
 echo "✓ Code updated"
 
 echo ""
-echo "[2/4] Restarting via supervisor..."
+echo "[2/5] Testing nginx configuration..."
+if sudo nginx -t 2>&1 | grep -q "successful"; then
+    echo "✓ Nginx config valid"
+    echo ""
+    echo "[3/5] Reloading nginx..."
+    sudo systemctl reload nginx
+    echo "✓ Nginx reloaded"
+else
+    echo "✗ Nginx config test failed!"
+    sudo nginx -t
+    exit 1
+fi
+
+echo ""
+echo "[4/5] Restarting via supervisor..."
 sudo supervisorctl restart venus
 sleep 2
 echo "✓ Service restarted"
 
 echo ""
-echo "[3/4] Checking status..."
+echo "[5/5] Checking status..."
 sudo supervisorctl status venus
 
 echo ""
