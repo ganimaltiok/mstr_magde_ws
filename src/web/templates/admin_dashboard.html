@@ -132,10 +132,18 @@
                         <td><span class="badge badge-{{ endpoint.source }}">{{ endpoint.source }}</span></td>
                         <td>
                             {% if endpoint.redis_cache %}
-                            <span class="badge" style="background: #d1f2eb; color: #0c6e54;">✓ Enabled</span>
-                            <div style="font-size: 11px; color: #666; margin-top: 3px;" id="redis_meta_{{ endpoint.name }}">-</div>
+                                {% if endpoint.redis_metadata and endpoint.redis_metadata.last_updated %}
+                                <div style="font-size: 12px; color: #28a745; font-weight: 500;">
+                                    {{ endpoint.redis_metadata.last_updated[:19].replace('T', ' ') }}
+                                </div>
+                                <div style="font-size: 11px; color: #666;">
+                                    {{ endpoint.redis_metadata.record_count }} records
+                                </div>
+                                {% else %}
+                                <span style="color: #999; font-size: 11px;">Not cached yet</span>
+                                {% endif %}
                             {% else %}
-                            <span style="color: #999; font-size: 11px;">-</span>
+                            <span style="color: #999; font-size: 11px;">No cache</span>
                             {% endif %}
                         </td>
                         <td>{{ endpoint.description }}</td>
@@ -318,49 +326,7 @@
             }
         }
 
-        // Load Redis metadata for endpoints with redis_cache enabled
-        async function loadRedisMetadata() {
-            const endpoints = document.querySelectorAll('[id^="redis_meta_"]');
-            
-            for (const element of endpoints) {
-                const endpointName = element.id.replace('redis_meta_', '');
-                
-                try {
-                    const response = await fetch(`/api/admin/redis/metadata/${endpointName}`);
-                    const result = await response.json();
-                    
-                    if (response.ok && result.data) {
-                        const meta = result.data;
-                        const lastUpdated = new Date(meta.last_updated);
-                        const timeAgo = formatTimeAgo(lastUpdated);
-                        const ttlHours = Math.floor(meta.ttl_remaining / 3600);
-                        
-                        element.innerHTML = `${meta.record_count} records • ${timeAgo} • TTL: ${ttlHours}h`;
-                    } else {
-                        element.innerHTML = 'Not cached yet';
-                    }
-                } catch (e) {
-                    element.innerHTML = '-';
-                }
-            }
-        }
-
-        function formatTimeAgo(date) {
-            const seconds = Math.floor((new Date() - date) / 1000);
-            
-            if (seconds < 60) return `${seconds}s ago`;
-            const minutes = Math.floor(seconds / 60);
-            if (minutes < 60) return `${minutes}m ago`;
-            const hours = Math.floor(minutes / 60);
-            if (hours < 24) return `${hours}h ago`;
-            const days = Math.floor(hours / 24);
-            return `${days}d ago`;
-        }
-
-        // Load metadata on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            loadRedisMetadata();
-        });
+        // Metadata is now loaded server-side, no client-side loading needed
     </script>
 </body>
 </html>
