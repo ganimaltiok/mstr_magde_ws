@@ -82,14 +82,15 @@
                 <div class="form-group">
                     <label for="mssql_schema">Schema*</label>
                     <input type="text" id="mssql_schema" name="mssql_schema" 
-                           value="{{ endpoint.mssql.schema if endpoint and endpoint.mssql else 'dbo' }}"
-                           onblur="updateSqlDescription()">
+                           value="{{ endpoint.mssql.schema if endpoint and endpoint.mssql else 'dbo' }}">
                 </div>
                 <div class="form-group">
                     <label for="mssql_table">Table Name*</label>
                     <input type="text" id="mssql_table" name="mssql_table" 
-                           value="{{ endpoint.mssql.table if endpoint and endpoint.mssql else '' }}"
-                           onblur="updateSqlDescription()">
+                           value="{{ endpoint.mssql.table if endpoint and endpoint.mssql else '' }}">
+                </div>
+                <div class="form-group">
+                    <button type="button" class="btn btn-success" onclick="updateSqlDescription(true)">Update Description from Table</button>
                 </div>
             </div>
 
@@ -99,14 +100,15 @@
                 <div class="form-group">
                     <label for="pg_schema">Schema*</label>
                     <input type="text" id="pg_schema" name="pg_schema" 
-                           value="{{ endpoint.postgresql.schema if endpoint and endpoint.postgresql else 'public' }}"
-                           onblur="updatePgDescription()">
+                           value="{{ endpoint.postgresql.schema if endpoint and endpoint.postgresql else 'public' }}">
                 </div>
                 <div class="form-group">
                     <label for="pg_table">Table Name*</label>
                     <input type="text" id="pg_table" name="pg_table" 
-                           value="{{ endpoint.postgresql.table if endpoint and endpoint.postgresql else '' }}"
-                           onblur="updatePgDescription()">
+                           value="{{ endpoint.postgresql.table if endpoint and endpoint.postgresql else '' }}">
+                </div>
+                <div class="form-group">
+                    <button type="button" class="btn btn-success" onclick="updatePgDescription(true)">Update Description from Table</button>
                 </div>
             </div>
 
@@ -256,24 +258,24 @@
             tbody.appendChild(row);
         }
 
-        function updateSqlDescription() {
+        function updateSqlDescription(force = false) {
             const descField = document.getElementById('description');
             const schema = document.getElementById('mssql_schema').value.trim();
             const table = document.getElementById('mssql_table').value.trim();
             
-            // Only update if description is empty and both schema and table are filled
-            if (!descField.value && schema && table) {
+            // Update if forced OR if description is empty
+            if ((force || !descField.value) && schema && table) {
                 descField.value = `SQL: ${schema}.${table}`;
             }
         }
 
-        function updatePgDescription() {
+        function updatePgDescription(force = false) {
             const descField = document.getElementById('description');
             const schema = document.getElementById('pg_schema').value.trim();
             const table = document.getElementById('pg_table').value.trim();
             
-            // Only update if description is empty and both schema and table are filled
-            if (!descField.value && schema && table) {
+            // Update if forced OR if description is empty
+            if ((force || !descField.value) && schema && table) {
                 descField.value = `PostgreSQL: ${schema}.${table}`;
             }
         }
