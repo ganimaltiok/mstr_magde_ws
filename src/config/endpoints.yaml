@@ -1,6 +1,5 @@
 endpoints:
   acente_ekstresi_devreden:
-    behavior: cachemstr
     description: ''
     mstr:
       cube_id: 646B722F4EF17FF27579B4BD2993E49D
@@ -12,8 +11,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
+    source: microstrategy
   acente_ilk_uretim_bilgilendirme:
-    behavior: cachemstr
     description: ''
     mstr:
       cube_id: 5A6899DE456C9CB4E5E92682B734D040
@@ -25,8 +24,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
+    source: microstrategy
   acente_ivir_zivir:
-    behavior: cachemstr
     description: ''
     mstr:
       cube_id: 251EC45442E81DB5F67A8C8BB66D8EDB
@@ -38,8 +37,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
+    source: microstrategy
   agency_master_list:
-    behavior: cachemstr
     description: ''
     mstr:
       cube_id: 81ADF07E4383A687A469849F4CBE9257
@@ -51,8 +50,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
+    source: microstrategy
   is_ortaklari_listesi:
-    behavior: cachemstr
     description: ''
     mstr:
       cube_id: 8530CA634A73F32CCA9852888C56087D
@@ -64,8 +63,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
+    source: microstrategy
   kampanya_seyahat_2025:
-    behavior: cachemstr
     description: 'MSTR: WS_Seyahat Kampanya 2025'
     mstr:
       dossier_id: 5BC21C6B4F20DE4483807FA14817CF4D
@@ -77,8 +76,8 @@ endpoints:
         summary: WFF5E668DC2AD4EA1B72D48002BE84D3C
     pagination:
       per_page: 100
+    source: microstrategy
   kampanya_yangin_2025:
-    behavior: cachemstr
     description: 'MSTR: WS_Kampanya Yangin 2025'
     mstr:
       dossier_id: A6CEF7024ED004189A076982339E3122
@@ -89,8 +88,8 @@ endpoints:
         summary: W41BBD592D247416C8D94378FCA1F6F05
     pagination:
       per_page: 100
+    source: microstrategy
   p10_tekliflerim:
-    behavior: cachemstr
     description: ''
     mstr:
       dossier_id: 8FA3541B427391A8F25A90B17EA6EDE3
@@ -103,8 +102,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
+    source: microstrategy
   p1_anlik_uretim:
-    behavior: livemstr
     description: 'MSTR: P1_Anlık Üretim Raporu'
     mstr:
       dossier_id: 4A756FF546F51702ED3788912196FEC7
@@ -116,8 +115,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
+    source: microstrategy
   p1_anlik_uretim2:
-    behavior: livesql
     description: WinsureLive.dbo.V001ACENTELER
     mssql:
       database: WinsureLive
@@ -125,8 +124,8 @@ endpoints:
       table: V001ACENTELER
     pagination:
       per_page: 100
+    source: mssql
   p2_yenileme:
-    behavior: livemstr
     description: 'MSTR: P2_Yeni Yenileme Raporu'
     mstr:
       dossier_id: 31C35B6E46A238849EA597AFD19A9F99
@@ -140,8 +139,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
+    source: microstrategy
   p3_acente_hedef:
-    behavior: cachemstr
     description: ''
     mstr:
       cube_id: AE69CDD54B715C8C8B5DD7A2C5F8B2A3
@@ -153,8 +152,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
+    source: microstrategy
   p4_acente_karnesi:
-    behavior: cachemstr
     description: ''
     mstr:
       cube_id: 855565324EDC48EAACBB43A5561E2605
@@ -166,8 +165,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
+    source: microstrategy
   p5_hasar:
-    behavior: cachemstr
     description: ''
     mstr:
       cube_id: BBFD36E041C265002034DE8E5BBC1A68
@@ -179,8 +178,8 @@ endpoints:
         summary: W17AC279F3C584CA5830EA4BD2FEB76B6
     pagination:
       per_page: 100
+    source: microstrategy
   p6_segmentasyon:
-    behavior: cachemstr
     description: ''
     mstr:
       cube_id: 4CB76E5845FD7F6E19E1748BD233EE94
@@ -192,8 +191,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
+    source: microstrategy
   p6_taslak_segmentasyon:
-    behavior: cachemstr
     description: ''
     mstr:
       cube_id: 4CB76E5845FD7F6E19E1748BD233EE94
@@ -205,8 +204,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
+    source: microstrategy
   p8_mtd_uretim:
-    behavior: cachemstr
     description: ''
     mstr:
       cube_id: F49F50A64491A53D45A4A3B1A8578B03
@@ -218,8 +217,8 @@ endpoints:
         summary: W0598535F7A7F42E2AC7D2C58161C1473
     pagination:
       per_page: 100
+    source: microstrategy
   p8_ytd_uretim:
-    behavior: cachemstr
     description: ''
     mstr:
       cube_id: F49F50A64491A53D45A4A3B1A8578B03
@@ -231,8 +230,8 @@ endpoints:
         summary: WA8F739E86E2C438797CC038E2F7BBB20
     pagination:
       per_page: 100
+    source: microstrategy
   p9_kazanclarim:
-    behavior: cachemstr
     description: ''
     mstr:
       cube_id: 855565324EDC48EAACBB43A5561E2605
@@ -244,16 +243,16 @@ endpoints:
         summary: WF44621A024B0486DA96A9BB5E4031801
     pagination:
       per_page: 100
+    source: microstrategy
   pg_test:
-    behavior: livepg
     description: mg_flow.vp_test
     pagination:
       per_page: 2
     postgresql:
       schema: mg_flow
       table: vp_test
+    source: postgresql
   r10_seyahat_kampanya:
-    behavior: cachemstr
     description: ''
     mstr:
       cube_id: 251EC45442E81DB5F67A8C8BB66D8EDB
@@ -265,8 +264,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
+    source: microstrategy
   r12_yangin_kampanya:
-    behavior: cachemstr
     description: ''
     mstr:
       cube_id: 251EC45442E81DB5F67A8C8BB66D8EDB
@@ -278,8 +277,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
+    source: microstrategy
   r13_hasar_raporu:
-    behavior: cachemstr
     description: ''
     mstr:
       cube_id: 251EC45442E81DB5F67A8C8BB66D8EDB
@@ -291,8 +290,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
+    source: microstrategy
   r14_muallak_raporu:
-    behavior: cachemstr
     description: ''
     mstr:
       cube_id: 6A921E8C4768DEAC7D7F12A0B0905C25
@@ -304,8 +303,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
+    source: microstrategy
   r15_ihbar_raporu:
-    behavior: cachemstr
     description: ''
     mstr:
       cube_id: 6A921E8C4768DEAC7D7F12A0B0905C25
@@ -317,8 +316,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
+    source: microstrategy
   r16_saglik_hasar_prim:
-    behavior: cachemstr
     description: ''
     mstr:
       cube_id: 1E1025904C1D305FD93B5B935B9115F1
@@ -330,8 +329,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
+    source: microstrategy
   r17_saglik_hasar:
-    behavior: cachemstr
     description: ''
     mstr:
       cube_id: 425D0C3647EF5FC957F50EBD43EAFB0F
@@ -343,8 +342,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
+    source: microstrategy
   r18_saglik_uretim:
-    behavior: cachemstr
     description: ''
     mstr:
       cube_id: F6705C07437F05DD5127AB88F3ADE73A
@@ -356,8 +355,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
+    source: microstrategy
   r18_saglık_uretim:
-    behavior: cachemstr
     description: ''
     mstr:
       cube_id: F6705C07437F05DD5127AB88F3ADE73A
@@ -369,8 +368,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
+    source: microstrategy
   r19_saglik_anket_verisi:
-    behavior: cachemstr
     description: ''
     mstr:
       cube_id: B33FBD504B1BC67655A462906C29A76F
@@ -382,8 +381,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
+    source: microstrategy
   r1_yenileme_raporu:
-    behavior: cachemstr
     description: ''
     mstr:
       cube_id: 6C5CD1EB412C2604696D7C81E33EA832
@@ -395,8 +394,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
+    source: microstrategy
   r2_uretim_raporu:
-    behavior: cachemstr
     description: ''
     mstr:
       cube_id: 6C5CD1EB412C2604696D7C81E33EA832
@@ -408,8 +407,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
+    source: microstrategy
   r3_teklif_raporu:
-    behavior: cachemstr
     description: ''
     mstr:
       cube_id: EEDCD63E41440AE1B1D6079D73D53D01
@@ -421,8 +420,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
+    source: microstrategy
   r4_acente_broker_raporu:
-    behavior: cachemstr
     description: ''
     mstr:
       cube_id: F84D95A04B17FB266E6598B768D5AD06
@@ -434,8 +433,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
+    source: microstrategy
   r5_kkr_raporu:
-    behavior: cachemstr
     description: ''
     mstr:
       cube_id: 31264DBF473465ECC02D168702D46EB3
@@ -447,8 +446,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
+    source: microstrategy
   r6_acente_ekstre:
-    behavior: cachemstr
     description: ''
     mstr:
       cube_id: E4B1F86243BC1D5ACC823095E8B7F35C
@@ -460,8 +459,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
+    source: microstrategy
   r7_komisyon_gider_belgesi:
-    behavior: cachemstr
     description: ''
     mstr:
       cube_id: FE4F7381422E037BF09D5CABE23757EC
@@ -473,3 +472,4 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
+    source: microstrategy
