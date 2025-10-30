@@ -82,12 +82,14 @@
                 <div class="form-group">
                     <label for="mssql_schema">Schema*</label>
                     <input type="text" id="mssql_schema" name="mssql_schema" 
-                           value="{{ endpoint.mssql.schema if endpoint and endpoint.mssql else 'dbo' }}">
+                           value="{{ endpoint.mssql.schema if endpoint and endpoint.mssql else 'dbo' }}"
+                           onblur="updateSqlDescription()">
                 </div>
                 <div class="form-group">
                     <label for="mssql_table">Table Name*</label>
                     <input type="text" id="mssql_table" name="mssql_table" 
-                           value="{{ endpoint.mssql.table if endpoint and endpoint.mssql else '' }}">
+                           value="{{ endpoint.mssql.table if endpoint and endpoint.mssql else '' }}"
+                           onblur="updateSqlDescription()">
                 </div>
             </div>
 
@@ -97,12 +99,14 @@
                 <div class="form-group">
                     <label for="pg_schema">Schema*</label>
                     <input type="text" id="pg_schema" name="pg_schema" 
-                           value="{{ endpoint.postgresql.schema if endpoint and endpoint.postgresql else 'public' }}">
+                           value="{{ endpoint.postgresql.schema if endpoint and endpoint.postgresql else 'public' }}"
+                           onblur="updatePgDescription()">
                 </div>
                 <div class="form-group">
                     <label for="pg_table">Table Name*</label>
                     <input type="text" id="pg_table" name="pg_table" 
-                           value="{{ endpoint.postgresql.table if endpoint and endpoint.postgresql else '' }}">
+                           value="{{ endpoint.postgresql.table if endpoint and endpoint.postgresql else '' }}"
+                           onblur="updatePgDescription()">
                 </div>
             </div>
 
@@ -220,6 +224,12 @@
                 document.getElementById('summary_viz_key').value = data.viz_keys.summary || '';
                 document.getElementById('detail_viz_key').value = data.viz_keys.detail || '';
 
+                // Auto-populate description with dossier name if description is empty
+                const descField = document.getElementById('description');
+                if (!descField.value && data.dossier_name) {
+                    descField.value = `MSTR: ${data.dossier_name}`;
+                }
+
                 // Clear and populate filter table with discovered filters
                 const tbody = document.querySelector('#filter-mappings tbody');
                 tbody.innerHTML = '';
@@ -228,7 +238,7 @@
                     addFilterRow(filter.suggested_param_name, filter.key, filter.name);
                 });
 
-                alert(`Dossier info gathered successfully!\n\nFound:\n- Cube ID: ${data.cube_id || 'Not found'}\n- Viz Keys: ${Object.keys(data.viz_keys).length}\n- Filters: ${data.filters.length}`);
+                alert(`Dossier info gathered successfully!\n\nFound:\n- Dossier: ${data.dossier_name || 'Unknown'}\n- Cube ID: ${data.cube_id || 'Not found'}\n- Viz Keys: ${Object.keys(data.viz_keys).length}\n- Filters: ${data.filters.length}`);
             } catch (e) {
                 alert('Failed to gather info: ' + e.message);
             }
@@ -244,6 +254,28 @@
                 <td><button type="button" class="btn btn-secondary" onclick="this.closest('tr').remove()">Remove</button></td>
             `;
             tbody.appendChild(row);
+        }
+
+        function updateSqlDescription() {
+            const descField = document.getElementById('description');
+            const schema = document.getElementById('mssql_schema').value.trim();
+            const table = document.getElementById('mssql_table').value.trim();
+            
+            // Only update if description is empty and both schema and table are filled
+            if (!descField.value && schema && table) {
+                descField.value = `SQL: ${schema}.${table}`;
+            }
+        }
+
+        function updatePgDescription() {
+            const descField = document.getElementById('description');
+            const schema = document.getElementById('pg_schema').value.trim();
+            const table = document.getElementById('pg_table').value.trim();
+            
+            // Only update if description is empty and both schema and table are filled
+            if (!descField.value && schema && table) {
+                descField.value = `PostgreSQL: ${schema}.${table}`;
+            }
         }
 
         // Initialize on page load

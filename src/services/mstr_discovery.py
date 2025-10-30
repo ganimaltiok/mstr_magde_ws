@@ -18,6 +18,7 @@ class MstrDiscoveryService:
         
         Returns:
             {
+                'dossier_name': str,
                 'cube_id': str,
                 'viz_keys': {'summary': str, 'detail': str},
                 'filters': [
@@ -34,6 +35,10 @@ class MstrDiscoveryService:
             definition = self.client.get_dossier_definition(dossier_id)
             logger.info(f"Retrieved definition with keys: {list(definition.keys())}")
             
+            # Extract dossier name
+            dossier_name = definition.get('name', 'Unknown Dossier')
+            logger.info(f"Extracted dossier_name: {dossier_name}")
+            
             # Extract cube ID
             cube_id = self._extract_cube_id(definition)
             logger.info(f"Extracted cube_id: {cube_id}")
@@ -47,6 +52,7 @@ class MstrDiscoveryService:
             logger.info(f"Extracted {len(filters)} filters: {[f['name'] for f in filters]}")
             
             return {
+                'dossier_name': dossier_name,
                 'cube_id': cube_id,
                 'viz_keys': viz_keys,
                 'filters': filters
