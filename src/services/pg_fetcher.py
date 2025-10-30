@@ -2,6 +2,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.pool import NullPool
 from urllib.parse import quote_plus
 import pandas as pd
+import warnings
 from typing import Dict, List, Tuple, Optional, Any
 from services.settings import get_settings
 import logging
@@ -200,7 +201,10 @@ class PGFetcher:
                 if df[col].dtype == 'object':
                     # Try to infer datetime, but check if conversion actually worked
                     try:
-                        converted = pd.to_datetime(df[col], errors='coerce')
+                        # Suppress UserWarning about date format inference
+                        with warnings.catch_warnings():
+                            warnings.simplefilter("ignore", UserWarning)
+                            converted = pd.to_datetime(df[col], errors='coerce')
                         # Only keep conversion if at least one value was successfully parsed
                         if converted.notna().any():
                             df[col] = converted
