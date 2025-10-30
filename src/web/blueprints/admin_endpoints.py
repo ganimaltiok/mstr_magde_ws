@@ -84,10 +84,11 @@ def delete_endpoint(endpoint_name: str):
 def _build_config_from_form(data: dict) -> dict:
     """Build endpoint config dictionary from form data."""
     behavior = data.get('behavior')
+    description = data.get('description', '')
     
     config = {
         'behavior': behavior,
-        'description': data.get('description', ''),
+        'description': description,
         'pagination': {
             'per_page': int(data.get('per_page', 100))
         }
@@ -95,17 +96,27 @@ def _build_config_from_form(data: dict) -> dict:
     
     # SQL-specific config
     if behavior in ['livesql', 'cachesql']:
+        schema = data.get('mssql_schema')
+        table = data.get('mssql_table')
         config['mssql'] = {
-            'schema': data.get('mssql_schema'),
-            'table': data.get('mssql_table')
+            'schema': schema,
+            'table': table
         }
+        # Auto-update description if not provided
+        if not description and schema and table:
+            config['description'] = f"{schema}.{table}"
     
     # PostgreSQL-specific config
     elif behavior in ['livepg', 'cachepg']:
+        schema = data.get('pg_schema')
+        table = data.get('pg_table')
         config['postgresql'] = {
-            'schema': data.get('pg_schema'),
-            'table': data.get('pg_table')
+            'schema': schema,
+            'table': table
         }
+        # Auto-update description if not provided
+        if not description and schema and table:
+            config['description'] = f"{schema}.{table}"
     
     # MSTR-specific config
     elif behavior in ['livemstr', 'cachemstr']:
