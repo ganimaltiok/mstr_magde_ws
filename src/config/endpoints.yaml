@@ -94,38 +94,50 @@ endpoints:
     behavior: cachemstr
     description: ''
     mstr:
-      cube_id: EEDCD63E41440AE1B1D6079D73D53D01
       dossier_id: 8FA3541B427391A8F25A90B17EA6EDE3
       filter_mappings:
-        agency_code: WD32141FFA40C46FD916758966AB9FFE4
+        acente_kodu: WD32141FFA40C46FD916758966AB9FFE4
+        teklif_vadeye_kalan: W94E78E1ADBA0469C959FDB3D2A3F8E9A
+        urunadi: W7EF0DB463CE548C4A80DDC4F506554C9
       viz_keys:
-        detail: null
+        detail: ''
         summary: K52
     pagination:
       per_page: 100
   p1_anlik_uretim:
-    behavior: cachemstr
-    description: ''
+    behavior: livemstr
+    description: 'MSTR: P1_Anlık Üretim Raporu'
     mstr:
-      cube_id: 81ADF07E4383A687A469849F4CBE9257
       dossier_id: 4A756FF546F51702ED3788912196FEC7
       filter_mappings:
         agency_code: W91C86AAE987E44B38976A26CD900C60D
+        agency_desc: WFB52A071E3BC4D67AA0B307CB71EBC08
       viz_keys:
         detail: WB8A466188CB74032B92CA7560BEC8391
         summary: K52
     pagination:
       per_page: 100
+  p1_anlik_uretim2:
+    behavior: livesql
+    description: WinsureLive.dbo.V001ACENTELER
+    mssql:
+      database: WinsureLive
+      schema: dbo
+      table: V001ACENTELER
+    pagination:
+      per_page: 100
   p2_yenileme:
-    behavior: cachemstr
-    description: ''
+    behavior: livemstr
+    description: 'MSTR: P2_Yeni Yenileme Raporu'
     mstr:
-      cube_id: 3DDD046243F33C637E0B7A9FCB9DE392
       dossier_id: 31C35B6E46A238849EA597AFD19A9F99
       filter_mappings:
         agency_code: W0A79556C5ED84133AB8F7B4B5A718223
+        police_bitis_tarihi: W343C57A1E79B48859462D83984247E90
+        poliçe_statü: WDB1855C8934D4495B65E1F5D82D240F9
+        ürün: W9C46C73882DB49F89EE934112B854184
       viz_keys:
-        detail: null
+        detail: ''
         summary: K52
     pagination:
       per_page: 100
@@ -233,6 +245,14 @@ endpoints:
         summary: WF44621A024B0486DA96A9BB5E4031801
     pagination:
       per_page: 100
+  pg_test:
+    behavior: livepg
+    description: mg_flow.vp_test
+    pagination:
+      per_page: 2
+    postgresql:
+      schema: mg_flow
+      table: vp_test
   r10_seyahat_kampanya:
     behavior: cachemstr
     description: ''
