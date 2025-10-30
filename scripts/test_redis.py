@@ -1,234 +1,187 @@
 #!/usr/bin/env python3
 """
-Test Redis cache for MSTR Herald v3 p10_tekliflerim endpoint.
+End-to-end Redis cache test for Venus v2 when Redis runs inside a docker container.
 
-This script tests:
-1. Redis connectivity
-2. Cache key generation
-3. Cache write/read operations
-4. TTL verification
+The script makes a real API call to the p10_tekliflerim endpoint, then inspects the
+redis container using `docker exec` to verify cache keys, TTL, and metadata.
 
 Usage:
-    python scripts/test_redis.py [host] [port]
-    
-Examples:
-    python scripts/test_redis.py                    # Test localhost:6379
-    python scripts/test_redis.py localhost 6379     # Explicit
+    python scripts/test_redis.py [container] [endpoint_url]
+
+Defaults:
+    container    redis
+    endpoint_url http://localhost:9101/api/v3/report/p10_tekliflerim/agency/100100
 """
 
-import sys
 import json
+import subprocess
+import sys
 import time
-from datetime import datetime
-
-try:
-    import redis
-except ImportError:
-    print("❌ Redis package not installed")
-    print("Install: pip install redis")
-    sys.exit(1)
 
 try:
     import requests
 except ImportError:
-    print("❌ Requests package not installed")
-    print("Install: pip install requests")
+    print("❌ requests package not installed\nInstall: pip install requests")
     sys.exit(1)
 
+GREEN = '\033[0;32m'
+RED = '\033[0;31m'
+YELLOW = '\033[1;33m'
+BLUE = '\033[0;34m'
+RESET = '\033[0m'
 
-def test_redis_connection(host='localhost', port=6379, db=0):
-    """Test Redis connection and operations."""
-    print("=" * 70)
-    print("Redis Connection Test")
-    print("=" * 70)
-    print(f"\nConnecting to: {host}:{port} (db={db})")
-    
+
+def info(text: str) -> None:
+    print(f"{BLUE}{text}{RESET}")
+
+
+def success(text: str) -> None:
+    print(f"{GREEN}✓ {text}{RESET}")
+
+
+def warn(text: str) -> None:
+    print(f"{YELLOW}⚠ {text}{RESET}")
+
+
+def error(text: str) -> None:
+    print(f"{RED}✖ {text}{RESET}")
+
+
+def run(cmd: list[str], *, check: bool = True) -> subprocess.CompletedProcess:
+    return subprocess.run(cmd, capture_output=True, text=True, check=check)
+
+
+def run_redis(container: str, args: list[str]) -> str:
+    cmd = ['docker', 'exec', container, 'redis-cli', *args]
+    result = run(cmd)
+    return result.stdout.strip()
+
+
+def ensure_container(container: str) -> bool:
+    info(f"Checking redis container '{container}'...")
     try:
-        # Create Redis client
-        client = redis.Redis(
-            host=host,
-            port=port,
-            db=db,
-            decode_responses=False,
-            socket_connect_timeout=5,
-            socket_timeout=5
-        )
-        
-        # Test 1: PING
-        print("\n[1/5] Testing PING...")
-        response = client.ping()
-        print(f"  ✓ PING response: {response}")
-        
-        # Test 2: Set a test key
-        print("\n[2/5] Testing SET...")
-        test_key = "test:v3:connection_test"
-        test_value = json.dumps({
-            "timestamp": datetime.now().isoformat(),
-            "test": "Redis connection from MSTR Herald v3"
-        })
-        client.set(test_key, test_value, ex=60)  # 60 second expiry
-        print(f"  ✓ SET key: {test_key}")
-        
-        # Test 3: Get the test key
-        print("\n[3/5] Testing GET...")
-        retrieved = client.get(test_key)
-        if retrieved:
-            data = json.loads(retrieved.decode('utf-8'))
-            print(f"  ✓ GET key: {test_key}")
-            print(f"  ✓ Value: {data}")
-        else:
-            print(f"  ⚠ Key not found (unexpected)")
-        
-        # Test 4: Get Redis info
-        print("\n[4/5] Getting Redis info...")
-        info = client.info('server')
-        print(f"  ✓ Redis version: {info.get('redis_version', 'unknown')}")
-        print(f"  ✓ OS: {info.get('os', 'unknown')}")
-        print(f"  ✓ Uptime (days): {info.get('uptime_in_days', 'unknown')}")
-        
-        # Test 5: Check memory
-        print("\n[5/5] Checking memory usage...")
-        memory_info = client.info('memory')
-        used_memory = memory_info.get('used_memory_human', 'unknown')
-        print(f"  ✓ Used memory: {used_memory}")
-        
-        # Test p10_tekliflerim endpoint caching
-        print("\n" + "=" * 70)
-        print("Testing p10_tekliflerim endpoint Redis cache...")
-        print("=" * 70)
-        
-        # Clear any existing cache for this endpoint
-        endpoint_pattern = "v3:p10_tekliflerim:*"
-        existing_keys = client.keys(endpoint_pattern)
-        if existing_keys:
-            print(f"\n[Cleanup] Deleting {len(existing_keys)} existing cache keys...")
-            for key in existing_keys:
-                client.delete(key)
-            print("  ✓ Cache cleared")
-        
-        # Make first request (should cache)
-        print("\n[Request 1] Making API call to cache data...")
-        url = "http://localhost:9101/api/v3/report/p10_tekliflerim"
-        params = {"agency": "100100"}
-        
-        try:
-            start = time.time()
-            response = requests.get(url, params=params, timeout=60)
-            duration = time.time() - start
-            
-            if response.status_code == 200:
-                print(f"  ✓ Request successful ({duration:.2f}s)")
-                data = response.json()
-                record_count = len(data.get('data', []))
-                print(f"  ✓ Records: {record_count}")
-            else:
-                print(f"  ⚠ Request failed: {response.status_code}")
-                print(f"  Response: {response.text[:200]}")
-        except Exception as e:
-            print(f"  ❌ Request error: {e}")
-        
-        # Wait a moment for cache write
-        time.sleep(1)
-        
-        # Check if cache was created
-        print("\n[Verification] Checking Redis for cached data...")
-        cached_keys = client.keys(endpoint_pattern)
-        
-        if cached_keys:
-            print(f"  ✓ Found {len(cached_keys)} cache key(s)")
-            for key in cached_keys:
-                key_str = key.decode('utf-8') if isinstance(key, bytes) else key
-                ttl = client.ttl(key)
-                ttl_hours = ttl / 3600
-                
-                # Get cached data size
-                cached_data = client.get(key)
-                if cached_data:
-                    size_kb = len(cached_data) / 1024
-                    try:
-                        parsed = json.loads(cached_data.decode('utf-8'))
-                        cached_records = len(parsed.get('data', []))
-                        print(f"\n  Key: {key_str}")
-                        print(f"  TTL: {ttl}s ({ttl_hours:.1f} hours)")
-                        print(f"  Size: {size_kb:.2f} KB")
-                        print(f"  Records: {cached_records}")
-                    except:
-                        print(f"  Key: {key_str} (binary data, {size_kb:.2f} KB)")
-        else:
-            print("  ⚠ No cache keys found!")
-            print("\n  Possible reasons:")
-            print("    1. redis_cache is not enabled for p10_tekliflerim in endpoints.yaml")
-            print("    2. Redis connection failed in Flask app")
-            print("    3. Check Flask logs: sudo tail -50 /var/log/venus/error.log")
-        
-        # Check all v3 cache keys
-        print("\n" + "=" * 70)
-        print("All v3 cache keys in Redis:")
-        v3_keys = client.keys("v3:*")
-        if v3_keys:
-            print(f"  ✓ Found {len(v3_keys)} total v3 cache keys")
-            for i, key in enumerate(v3_keys[:10], 1):
-                key_str = key.decode('utf-8') if isinstance(key, bytes) else key
-                ttl = client.ttl(key)
-                print(f"    {i}. {key_str} (TTL: {ttl}s)")
-            if len(v3_keys) > 10:
-                print(f"    ... and {len(v3_keys) - 10} more")
-        else:
-            print("  ℹ No v3 cache keys found")
-        
-        # Cleanup
-        print("\n" + "=" * 70)
-        print("Cleaning up test key...")
-        client.delete(test_key)
-        print("  ✓ Test key deleted")
-        
-        # Summary
-        print("\n" + "=" * 70)
-        print("✅ SUCCESS - Redis is working correctly!")
-        print("=" * 70)
-        print("\nConnection details:")
-        print(f"  Host: {host}")
-        print(f"  Port: {port}")
-        print(f"  DB: {db}")
-        print(f"  Status: Connected and operational")
-        print("\nYou can use this Redis instance for MSTR Herald v3 cache.")
-        
-        return True
-        
-    except redis.ConnectionError as e:
-        print(f"\n❌ Connection Error: {e}")
-        print("\nPossible issues:")
-        print("  1. Redis is not running")
-        print("  2. Host/port is incorrect")
-        print("  3. Firewall blocking connection")
-        print("  4. Redis not listening on this interface")
-        print("\nTo check:")
-        print("  - Docker: docker ps | grep redis")
-        print("  - Service: systemctl status redis-server")
-        print("  - Port: netstat -tlnp | grep 6379")
+        result = run(['docker', 'ps', '--filter', f'name={container}', '--format', '{{.Names}}'])
+    except subprocess.CalledProcessError as exc:
+        error(f"Docker not available: {exc.stderr.strip()}")
         return False
-        
-    except redis.TimeoutError as e:
-        print(f"\n❌ Timeout Error: {e}")
-        print("\nRedis is not responding. Check if it's running.")
+    containers = [name for name in result.stdout.splitlines() if name]
+    if container not in containers:
+        error(f"Container '{container}' not found or not running")
+        warn("Start it with: docker start redis")
         return False
-        
-    except Exception as e:
-        print(f"\n❌ Unexpected Error: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
+    success(f"Container '{container}' is running")
+    return True
 
 
-def main():
-    """Main entry point."""
-    # Parse command line arguments
-    host = sys.argv[1] if len(sys.argv) > 1 else 'localhost'
-    port = int(sys.argv[2]) if len(sys.argv) > 2 else 6379
-    
-    success = test_redis_connection(host, port)
-    sys.exit(0 if success else 1)
+def test_redis(container: str) -> bool:
+    info("Testing redis connectivity (docker exec)...")
+    try:
+        response = run_redis(container, ['PING'])
+    except subprocess.CalledProcessError as exc:
+        error(f"redis-cli failed: {exc.stderr.strip()}")
+        return False
+    if response != 'PONG':
+        error(f"Unexpected PING response: {response}")
+        return False
+    success("redis-cli PING responded with PONG")
+    server_info = run_redis(container, ['INFO', 'server'])
+    for line in server_info.splitlines():
+        if line.startswith('redis_version:'):
+            info(f"Redis version: {line.split(':', 1)[1]}")
+        if line.startswith('uptime_in_days:'):
+            info(f"Uptime (days): {line.split(':', 1)[1]}")
+    return True
+
+
+def clear_endpoint_cache(container: str, pattern: str) -> None:
+    info(f"Clearing existing cache keys matching '{pattern}'...")
+    keys = run_redis(container, ['--scan', '--pattern', pattern])
+    key_list = [k for k in keys.splitlines() if k]
+    if not key_list:
+        warn("No existing cache keys to delete")
+        return
+    for key in key_list:
+        run_redis(container, ['DEL', key])
+    success(f"Deleted {len(key_list)} existing cache key(s)")
+
+
+def trigger_cache(endpoint_url: str) -> bool:
+    info(f"Requesting endpoint: {endpoint_url}")
+    try:
+        start = time.perf_counter()
+        response = requests.get(endpoint_url, timeout=120)
+        elapsed = time.perf_counter() - start
+    except Exception as exc:
+        error(f"HTTP request failed: {exc}")
+        return False
+    info(f"Status code: {response.status_code}, time: {elapsed:.2f}s")
+    if response.status_code != 200:
+        warn(response.text[:200])
+        return False
+    try:
+        payload = response.json()
+        records = len(payload.get('data', []))
+        success(f"Endpoint returned {records} record(s)")
+    except ValueError:
+        warn("Endpoint did not return JSON")
+    return True
+
+
+def verify_cache(container: str, pattern: str) -> bool:
+    info("Inspecting Redis cache...")
+    keys_output = run_redis(container, ['--scan', '--pattern', pattern])
+    keys = [k for k in keys_output.splitlines() if k]
+    if not keys:
+        error("No cache keys found for endpoint")
+        return False
+    success(f"Found {len(keys)} cache key(s)")
+    for key in keys:
+        ttl = run_redis(container, ['TTL', key])
+        ttl_val = int(ttl) if ttl.isdigit() else -1
+        ttl_hours = ttl_val / 3600 if ttl_val > 0 else 0
+        info(f"Key: {key}")
+        info(f"  TTL: {ttl} seconds (~{ttl_hours:.1f} hours)")
+        key_type = run_redis(container, ['TYPE', key])
+        info(f"  Type: {key_type}")
+        if key_type == 'string':
+            length = run_redis(container, ['STRLEN', key])
+            if length.isdigit():
+                size_kb = int(length) / 1024
+                info(f"  Size: {size_kb:.2f} KB")
+    return True
+
+
+def show_stats(container: str) -> None:
+    info("Redis keyspace summary:")
+    dbsize = run_redis(container, ['DBSIZE'])
+    info(f"  Total keys: {dbsize}")
+    memory = run_redis(container, ['INFO', 'memory'])
+    for line in memory.splitlines():
+        if line.startswith('used_memory_human:'):
+            info(f"  Used memory: {line.split(':', 1)[1]}")
+
+
+def main() -> int:
+    container = sys.argv[1] if len(sys.argv) > 1 else 'redis'
+    endpoint_url = sys.argv[2] if len(sys.argv) > 2 else (
+        'http://localhost:9101/api/v3/report/p10_tekliflerim/agency/100100'
+    )
+    cache_pattern = 'v3:p10_tekliflerim:*'
+
+    if not ensure_container(container):
+        return 1
+    if not test_redis(container):
+        return 1
+    clear_endpoint_cache(container, cache_pattern)
+    if not trigger_cache(endpoint_url):
+        return 1
+    time.sleep(1)
+    if not verify_cache(container, cache_pattern):
+        return 1
+    show_stats(container)
+    success("Redis cache test completed successfully")
+    return 0
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())
