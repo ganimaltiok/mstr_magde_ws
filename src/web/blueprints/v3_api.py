@@ -123,6 +123,7 @@ def get_report(report_name: str, agency_code: str = None):
         
         # Use make_response to ensure proper response object
         response = make_response(jsonify(response_data))
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
         if cache_control:
             response.headers['Cache-Control'] = cache_control
         if endpoint_config.cache_zone:
