@@ -22,7 +22,7 @@ def dashboard():
     for name, config in endpoints.items():
         endpoint_data.append({
             'name': name,
-            'behavior': config.behavior,
+            'source': config.source,
             'description': config.description,
             'is_cached': config.is_cached,
             'cache_zone': config.cache_zone
