@@ -191,6 +191,7 @@ endpoints:
         summary: W17AC279F3C584CA5830EA4BD2FEB76B6
     pagination:
       per_page: 100
+    redis_cache: true
     source: microstrategy
     redis_cache: false
   p6_segmentasyon:
