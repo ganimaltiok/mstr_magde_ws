@@ -13,44 +13,41 @@ DEPLOY_DIR="/home/administrator/venus"
 echo -e "${GREEN}Quick Update - Venus v2${NC}"
 echo ""
 
-echo "[1/5] Pulling latest code..."
+echo "[1/6] Committing local endpoints.yaml changes..."
 cd "$DEPLOY_DIR"
 
-# Stash local changes to endpoints.yaml if they exist
+# Check if endpoints.yaml has local changes
 if git diff --quiet src/config/endpoints.yaml; then
     echo "No local changes to endpoints.yaml"
 else
-    echo "Stashing local endpoints.yaml changes..."
-    git stash push -m "Auto-stash endpoints.yaml before update" src/config/endpoints.yaml
-    STASHED=1
+    echo "Committing endpoints.yaml changes..."
+    git add src/config/endpoints.yaml
+    git commit -m "Update endpoints.yaml from server $(date '+%Y-%m-%d %H:%M:%S')"
+    git push origin venus_v2
+    echo "✓ Endpoints.yaml committed and pushed"
 fi
 
+echo ""
+echo "[2/6] Pulling latest code..."
 git pull origin venus_v2
-
-# Restore stashed endpoints.yaml if we stashed it
-if [ "$STASHED" = "1" ]; then
-    echo "Restoring local endpoints.yaml..."
-    git stash pop
-fi
-
 echo "✓ Code updated"
 
 echo ""
-echo "[2/5] Restarting Flask via supervisor..."
+echo "[3/6] Restarting Flask via supervisor..."
 sudo supervisorctl restart venus
 sleep 2
 echo "✓ Service restarted"
 
 echo ""
-echo "[3/5] Checking Flask status..."
+echo "[4/6] Checking Flask status..."
 sudo supervisorctl status venus
 
 echo ""
-echo "[4/5] Testing nginx configuration..."
+echo "[5/6] Testing nginx configuration..."
 if sudo nginx -t 2>&1 | grep -q "successful"; then
     echo "✓ Nginx config valid"
     echo ""
-    echo "[5/5] Reloading nginx..."
+    echo "[6/6] Reloading nginx..."
     sudo systemctl reload nginx
     echo "✓ Nginx reloaded"
 else
