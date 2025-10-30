@@ -186,9 +186,9 @@ class MstrFetcher:
             for record in data_records:
                 normalized = {}
                 for key, value in record.items():
-                    # Convert NaN to None
-                    if isinstance(value, float) and math.isnan(value):
-                        value = None
+                    # Convert NaN/None to "NULL" string for consistency with old API
+                    if value is None or (isinstance(value, float) and math.isnan(value)):
+                        value = "NULL"
                     # Normalize key to camelCase
                     new_key = to_camel_case(key)
                     normalized[new_key] = value

@@ -165,8 +165,21 @@ class SQLFetcher:
                 params_with_pagination = params + [offset, per_page]
                 df = pd.read_sql(data_sql, conn, params=params_with_pagination)
             
+            # Convert DataFrame to records with NULL string for None values
+            import math
+            data_records = df.to_dict('records')
+            normalized_records = []
+            for record in data_records:
+                normalized = {}
+                for key, value in record.items():
+                    # Convert None/NaN to "NULL" string
+                    if value is None or (isinstance(value, float) and math.isnan(value)):
+                        value = "NULL"
+                    normalized[key] = value
+                normalized_records.append(normalized)
+            
             return {
-                'data': df.to_dict('records'),
+                'data': normalized_records,
                 'total_records': total_records,
                 'columns': df.columns.tolist()
             }

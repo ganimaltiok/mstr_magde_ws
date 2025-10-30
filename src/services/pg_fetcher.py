@@ -216,11 +216,24 @@ class PGFetcher:
                     logger.info(f"Converting datetime column: {col}")
                     df[col] = df[col].apply(
                         lambda x: x.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + '+03:00' 
-                        if pd.notna(x) else None
+                        if pd.notna(x) else "NULL"
                     )
             
+            # Convert DataFrame to records with NULL string for None values
+            import math
+            data_records = df.to_dict('records')
+            normalized_records = []
+            for record in data_records:
+                normalized = {}
+                for key, value in record.items():
+                    # Convert None/NaN to "NULL" string
+                    if value is None or (isinstance(value, float) and math.isnan(value)):
+                        value = "NULL"
+                    normalized[key] = value
+                normalized_records.append(normalized)
+            
             return {
-                'data': df.to_dict('records'),
+                'data': normalized_records,
                 'total_records': total_records,
                 'columns': df.columns.tolist(),
                 'query': executable_query.strip()
