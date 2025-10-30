@@ -197,7 +197,9 @@ class PGFetcher:
             return {
                 'data': df.to_dict('records'),
                 'total_records': total_records,
-                'columns': df.columns.tolist()
+                'columns': df.columns.tolist(),
+                'query': data_sql.strip(),
+                'params': params_with_pagination
             }
         
         except Exception as e:
