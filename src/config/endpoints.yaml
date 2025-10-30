@@ -110,7 +110,7 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
+    redis_cache: true
   p1_anlik_uretim:
     description: 'MSTR: P1_Anlık Üretim Raporu'
     mstr:
