@@ -70,8 +70,8 @@ class EndpointConfig:
     
     @property
     def cache_zone(self) -> str:
-        """Get nginx cache zone name - always 'shortcache' now (10 minutes)."""
-        return 'shortcache'
+        """Get nginx cache zone name - v3 unified cache (10 minutes)."""
+        return 'apicache'
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for YAML serialization."""
