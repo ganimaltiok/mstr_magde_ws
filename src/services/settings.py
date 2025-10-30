@@ -126,7 +126,7 @@ def get_settings() -> Settings:
         MSSQL_DATABASE=os.getenv('MSSQL_DATABASE'),
         MSSQL_USER=os.getenv('MSSQL_USER'),
         MSSQL_PASSWORD=os.getenv('MSSQL_PASSWORD'),
-        MSSQL_DRIVER=os.getenv('MSSQL_DRIVER', 'ODBC Driver 17 for SQL Server'),
+        MSSQL_DRIVER=os.getenv('MSSQL_DRIVER', 'ODBC Driver 18 for SQL Server'),
 
         # MicroStrategy
         MSTR_URL_API=os.getenv('MSTR_URL_API'),
