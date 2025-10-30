@@ -98,13 +98,23 @@ def _build_config_from_form(data: dict) -> dict:
     if behavior in ['livesql', 'cachesql']:
         schema = data.get('mssql_schema')
         table = data.get('mssql_table')
+        database = data.get('mssql_database')
+        
         config['mssql'] = {
             'schema': schema,
             'table': table
         }
+        
+        # Add database if provided
+        if database:
+            config['mssql']['database'] = database
+        
         # Auto-update description if not provided
         if not description and schema and table:
-            config['description'] = f"{schema}.{table}"
+            if database:
+                config['description'] = f"{database}.{schema}.{table}"
+            else:
+                config['description'] = f"{schema}.{table}"
     
     # PostgreSQL-specific config
     elif behavior in ['livepg', 'cachepg']:

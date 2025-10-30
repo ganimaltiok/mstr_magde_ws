@@ -94,11 +94,12 @@ class DataFetcher:
         """Fetch from MSSQL."""
         schema = config.mssql.get('schema')
         table = config.mssql.get('table')
+        database = config.mssql.get('database')  # Optional: for cross-database queries
         
         if not schema or not table:
             raise ValueError("MSSQL schema and table required")
         
-        result = self.sql_fetcher.fetch(schema, table, query_params, page, per_page)
+        result = self.sql_fetcher.fetch(schema, table, query_params, page, per_page, database)
         
         total_pages = math.ceil(result['total_records'] / per_page) if per_page > 0 else 1
         

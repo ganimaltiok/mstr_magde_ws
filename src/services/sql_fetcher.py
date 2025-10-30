@@ -22,11 +22,12 @@ class SQLFetcher:
         
         return pyodbc.connect(conn_str, timeout=30)
     
-    def _get_table_columns(self, schema: str, table: str) -> List[str]:
+    def _get_table_columns(self, schema: str, table: str, database: Optional[str] = None) -> List[str]:
         """Get list of columns for validation."""
-        query = """
+        db_prefix = f"[{database}]." if database else ""
+        query = f"""
             SELECT COLUMN_NAME
-            FROM INFORMATION_SCHEMA.COLUMNS
+            FROM {db_prefix}INFORMATION_SCHEMA.COLUMNS
             WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
             ORDER BY ORDINAL_POSITION
         """
@@ -115,10 +116,15 @@ class SQLFetcher:
         table: str,
         query_params: Dict[str, str],
         page: int = 1,
-        per_page: int = 100
+        per_page: int = 100,
+        database: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Fetch data with server-side filtering and pagination.
+        
+        Args:
+            database: Optional database name. If provided, uses three-part naming.
+                     If None, uses the database from connection string.
         
         Returns:
             {
@@ -129,13 +135,17 @@ class SQLFetcher:
         """
         try:
             # Get table columns for validation
-            columns = self._get_table_columns(schema, table)
+            columns = self._get_table_columns(schema, table, database)
             
             # Build WHERE clause
             where_clause, params = self._build_where_clause(query_params, columns)
             
+            # Build table reference with optional database prefix
+            db_prefix = f"[{database}]." if database else ""
+            table_ref = f"{db_prefix}[{schema}].[{table}]"
+            
             # Count total records
-            count_sql = f"SELECT COUNT(*) FROM [{schema}].[{table}] WHERE {where_clause}"
+            count_sql = f"SELECT COUNT(*) FROM {table_ref} WHERE {where_clause}"
             
             with self._get_connection() as conn:
                 cursor = conn.cursor()
@@ -145,7 +155,7 @@ class SQLFetcher:
                 # Fetch data with pagination
                 offset = (page - 1) * per_page
                 data_sql = f"""
-                    SELECT * FROM [{schema}].[{table}]
+                    SELECT * FROM {table_ref}
                     WHERE {where_clause}
                     ORDER BY (SELECT NULL)
                     OFFSET ? ROWS

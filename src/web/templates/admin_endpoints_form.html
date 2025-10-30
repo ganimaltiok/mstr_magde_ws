@@ -80,6 +80,13 @@
             <div id="sql-config" class="config-section">
                 <h3>MSSQL Configuration</h3>
                 <div class="form-group">
+                    <label for="mssql_database">Database (optional)</label>
+                    <input type="text" id="mssql_database" name="mssql_database" 
+                           value="{{ endpoint.mssql.database if endpoint and endpoint.mssql else '' }}"
+                           placeholder="Leave empty to use default from .env">
+                    <small>Only specify if querying a different database than the default</small>
+                </div>
+                <div class="form-group">
                     <label for="mssql_schema">Schema*</label>
                     <input type="text" id="mssql_schema" name="mssql_schema" 
                            value="{{ endpoint.mssql.schema if endpoint and endpoint.mssql else 'dbo' }}">
