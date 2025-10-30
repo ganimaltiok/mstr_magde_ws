@@ -12,7 +12,6 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
   acente_ilk_uretim_bilgilendirme:
     description: ''
     mstr:
@@ -26,7 +25,6 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
   acente_ivir_zivir:
     description: ''
     mstr:
@@ -40,7 +38,6 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
   agency_master_list:
     description: ''
     mstr:
@@ -54,7 +51,6 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
   is_ortaklari_listesi:
     description: ''
     mstr:
@@ -68,7 +64,6 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
   kampanya_seyahat_2025:
     description: 'MSTR: WS_Seyahat Kampanya 2025'
     mstr:
@@ -82,7 +77,6 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
   kampanya_yangin_2025:
     description: 'MSTR: WS_Kampanya Yangin 2025'
     mstr:
@@ -95,7 +89,6 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
   p10_tekliflerim:
     description: ''
     mstr:
@@ -110,7 +103,6 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
   p1_anlik_uretim:
     description: 'MSTR: P1_Anlık Üretim Raporu'
     mstr:
@@ -124,7 +116,6 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
   p1_anlik_uretim2:
     description: WinsureLive.dbo.V001ACENTELER
     mssql:
@@ -134,7 +125,6 @@ endpoints:
     pagination:
       per_page: 100
     source: mssql
-    redis_cache: false
   p2_yenileme:
     description: 'MSTR: P2_Yeni Yenileme Raporu'
     mstr:
@@ -150,7 +140,6 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
   p3_acente_hedef:
     description: ''
     mstr:
@@ -164,7 +153,6 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
   p4_acente_karnesi:
     description: ''
     mstr:
@@ -178,7 +166,6 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
   p5_hasar:
     description: ''
     mstr:
@@ -192,7 +179,6 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
   p6_segmentasyon:
     description: ''
     mstr:
@@ -206,7 +192,6 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
   p6_taslak_segmentasyon:
     description: ''
     mstr:
@@ -220,7 +205,6 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
   p8_mtd_uretim:
     description: ''
     mstr:
@@ -234,7 +218,6 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
   p8_ytd_uretim:
     description: ''
     mstr:
@@ -248,7 +231,6 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
   p9_kazanclarim:
     description: ''
     mstr:
@@ -262,7 +244,6 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
   pg_test:
     description: mg_flow.vp_test
     pagination:
@@ -271,7 +252,6 @@ endpoints:
       schema: mg_flow
       table: vp_test
     source: postgresql
-    redis_cache: false
   r10_seyahat_kampanya:
     description: ''
     mstr:
@@ -285,7 +265,6 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
   r12_yangin_kampanya:
     description: ''
     mstr:
@@ -299,7 +278,6 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
   r13_hasar_raporu:
     description: ''
     mstr:
@@ -313,7 +291,6 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
   r14_muallak_raporu:
     description: ''
     mstr:
@@ -327,7 +304,6 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
   r15_ihbar_raporu:
     description: ''
     mstr:
@@ -341,7 +317,6 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
   r16_saglik_hasar_prim:
     description: ''
     mstr:
@@ -355,7 +330,6 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
   r17_saglik_hasar:
     description: ''
     mstr:
@@ -369,7 +343,6 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
   r18_saglik_uretim:
     description: ''
     mstr:
@@ -383,7 +356,6 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
   r18_saglık_uretim:
     description: ''
     mstr:
@@ -397,7 +369,6 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
   r19_saglik_anket_verisi:
     description: ''
     mstr:
@@ -411,7 +382,6 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
   r1_yenileme_raporu:
     description: ''
     mstr:
@@ -425,7 +395,6 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
   r2_uretim_raporu:
     description: ''
     mstr:
@@ -439,7 +408,6 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
   r3_teklif_raporu:
     description: ''
     mstr:
@@ -453,7 +421,6 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
   r4_acente_broker_raporu:
     description: ''
     mstr:
@@ -467,7 +434,6 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
   r5_kkr_raporu:
     description: ''
     mstr:
@@ -481,7 +447,6 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
   r6_acente_ekstre:
     description: ''
     mstr:
@@ -495,7 +460,6 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
   r7_komisyon_gider_belgesi:
     description: ''
     mstr:
@@ -509,4 +473,3 @@ endpoints:
     pagination:
       per_page: 100
     source: microstrategy
-    redis_cache: false
