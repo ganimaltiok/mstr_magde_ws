@@ -36,11 +36,21 @@ fi
 echo "✓ Code updated"
 
 echo ""
-echo "[2/5] Testing nginx configuration..."
+echo "[2/5] Restarting Flask via supervisor..."
+sudo supervisorctl restart venus
+sleep 2
+echo "✓ Service restarted"
+
+echo ""
+echo "[3/5] Checking Flask status..."
+sudo supervisorctl status venus
+
+echo ""
+echo "[4/5] Testing nginx configuration..."
 if sudo nginx -t 2>&1 | grep -q "successful"; then
     echo "✓ Nginx config valid"
     echo ""
-    echo "[3/5] Reloading nginx..."
+    echo "[5/5] Reloading nginx..."
     sudo systemctl reload nginx
     echo "✓ Nginx reloaded"
 else
@@ -48,16 +58,6 @@ else
     sudo nginx -t
     exit 1
 fi
-
-echo ""
-echo "[4/5] Restarting via supervisor..."
-sudo supervisorctl restart venus
-sleep 2
-echo "✓ Service restarted"
-
-echo ""
-echo "[5/5] Checking status..."
-sudo supervisorctl status venus
 
 echo ""
 echo -e "${GREEN}Update complete!${NC}"
