@@ -66,14 +66,14 @@ endpoints:
       per_page: 100
   kampanya_seyahat_2025:
     behavior: cachemstr
-    description: ''
+    description: 'MSTR: WS_Seyahat Kampanya 2025'
     mstr:
-      cube_id: 241383414F2ECCE2B72127AE73517244
       dossier_id: 5BC21C6B4F20DE4483807FA14817CF4D
       filter_mappings:
+        acente_adi: W83BA9A3F278E466194949AB4F9FB72E3
         agency_code: WF6C32C2262574A8DACE3F6AF86516427
       viz_keys:
-        detail: null
+        detail: ''
         summary: WFF5E668DC2AD4EA1B72D48002BE84D3C
     pagination:
       per_page: 100
