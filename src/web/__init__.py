@@ -20,9 +20,8 @@ def create_app() -> Flask:
     app = Flask(__name__)
     app.config['SECRET_KEY'] = settings.SECRET_KEY
     
-    # Use ASCII-safe JSON encoding (escape Turkish characters for compatibility)
-    # This matches the old API format with \u escape sequences
-    app.config['JSON_AS_ASCII'] = True
+    # Disable ASCII encoding to return UTF-8 Turkish characters directly
+    app.config['JSON_AS_ASCII'] = False
     
     # Enable CORS
     CORS(app)
