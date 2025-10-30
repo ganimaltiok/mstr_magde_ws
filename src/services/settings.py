@@ -57,6 +57,18 @@ class Settings:
     SENTRY_DSN: str
     SENTRY_ENVIRONMENT: str
 
+    @property
+    def mssql_connection_string(self) -> str:
+        """Build MSSQL connection string from components."""
+        return (
+            f"DRIVER={{{self.MSSQL_DRIVER}}};"
+            f"SERVER={self.MSSQL_HOST},{self.MSSQL_PORT};"
+            f"DATABASE={self.MSSQL_DATABASE};"
+            f"UID={self.MSSQL_USER};"
+            f"PWD={self.MSSQL_PASSWORD};"
+            f"TrustServerCertificate=yes;"
+        )
+
 
 def _resolve_path(env_value: str | None, default: Path) -> Path:
     if env_value:
