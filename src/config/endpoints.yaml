@@ -11,8 +11,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
-    source: microstrategy
     redis_cache: false
+    source: microstrategy
   acente_ilk_uretim_bilgilendirme:
     description: ''
     mstr:
@@ -25,8 +25,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
-    source: microstrategy
     redis_cache: false
+    source: microstrategy
   acente_ivir_zivir:
     description: ''
     mstr:
@@ -39,8 +39,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
-    source: microstrategy
     redis_cache: false
+    source: microstrategy
   agency_master_list:
     description: ''
     mstr:
@@ -53,8 +53,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
-    source: microstrategy
     redis_cache: false
+    source: microstrategy
   is_ortaklari_listesi:
     description: ''
     mstr:
@@ -67,8 +67,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
-    source: microstrategy
     redis_cache: false
+    source: microstrategy
   kampanya_seyahat_2025:
     description: 'MSTR: WS_Seyahat Kampanya 2025'
     mstr:
@@ -81,8 +81,8 @@ endpoints:
         summary: WFF5E668DC2AD4EA1B72D48002BE84D3C
     pagination:
       per_page: 100
-    source: microstrategy
     redis_cache: false
+    source: microstrategy
   kampanya_yangin_2025:
     description: 'MSTR: WS_Kampanya Yangin 2025'
     mstr:
@@ -94,8 +94,8 @@ endpoints:
         summary: W41BBD592D247416C8D94378FCA1F6F05
     pagination:
       per_page: 100
-    source: microstrategy
     redis_cache: false
+    source: microstrategy
   p10_tekliflerim:
     description: ''
     mstr:
@@ -109,8 +109,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
-    source: microstrategy
     redis_cache: true
+    source: microstrategy
   p1_anlik_uretim:
     description: 'MSTR: P1_Anlık Üretim Raporu'
     mstr:
@@ -123,8 +123,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
-    source: microstrategy
     redis_cache: false
+    source: microstrategy
   p1_anlik_uretim2:
     description: WinsureLive.dbo.V001ACENTELER
     mssql:
@@ -133,8 +133,8 @@ endpoints:
       table: V001ACENTELER
     pagination:
       per_page: 100
-    source: mssql
     redis_cache: false
+    source: mssql
   p2_yenileme:
     description: 'MSTR: P2_Yeni Yenileme Raporu'
     mstr:
@@ -149,8 +149,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
-    source: microstrategy
     redis_cache: false
+    source: microstrategy
   p3_acente_hedef:
     description: ''
     mstr:
@@ -163,8 +163,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
-    source: microstrategy
     redis_cache: false
+    source: microstrategy
   p4_acente_karnesi:
     description: ''
     mstr:
@@ -177,8 +177,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
-    source: microstrategy
     redis_cache: false
+    source: microstrategy
   p5_hasar:
     description: ''
     mstr:
@@ -191,9 +191,8 @@ endpoints:
         summary: W17AC279F3C584CA5830EA4BD2FEB76B6
     pagination:
       per_page: 100
-    redis_cache: true
-    source: microstrategy
     redis_cache: false
+    source: microstrategy
   p6_segmentasyon:
     description: ''
     mstr:
@@ -206,8 +205,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
-    source: microstrategy
     redis_cache: false
+    source: microstrategy
   p6_taslak_segmentasyon:
     description: ''
     mstr:
@@ -220,8 +219,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
-    source: microstrategy
     redis_cache: false
+    source: microstrategy
   p8_mtd_uretim:
     description: ''
     mstr:
@@ -234,8 +233,8 @@ endpoints:
         summary: W0598535F7A7F42E2AC7D2C58161C1473
     pagination:
       per_page: 100
-    source: microstrategy
     redis_cache: false
+    source: microstrategy
   p8_ytd_uretim:
     description: ''
     mstr:
@@ -248,8 +247,8 @@ endpoints:
         summary: WA8F739E86E2C438797CC038E2F7BBB20
     pagination:
       per_page: 100
-    source: microstrategy
     redis_cache: false
+    source: microstrategy
   p9_kazanclarim:
     description: ''
     mstr:
@@ -262,8 +261,8 @@ endpoints:
         summary: WF44621A024B0486DA96A9BB5E4031801
     pagination:
       per_page: 100
-    source: microstrategy
     redis_cache: false
+    source: microstrategy
   pg_test:
     description: mg_flow.vp_test
     pagination:
@@ -271,8 +270,8 @@ endpoints:
     postgresql:
       schema: mg_flow
       table: vp_test
-    source: postgresql
     redis_cache: false
+    source: postgresql
   r10_seyahat_kampanya:
     description: ''
     mstr:
@@ -285,8 +284,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
-    source: microstrategy
     redis_cache: false
+    source: microstrategy
   r12_yangin_kampanya:
     description: ''
     mstr:
@@ -299,8 +298,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
-    source: microstrategy
     redis_cache: false
+    source: microstrategy
   r13_hasar_raporu:
     description: ''
     mstr:
@@ -313,8 +312,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
-    source: microstrategy
     redis_cache: false
+    source: microstrategy
   r14_muallak_raporu:
     description: ''
     mstr:
@@ -327,8 +326,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
-    source: microstrategy
     redis_cache: false
+    source: microstrategy
   r15_ihbar_raporu:
     description: ''
     mstr:
@@ -341,8 +340,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
-    source: microstrategy
     redis_cache: false
+    source: microstrategy
   r16_saglik_hasar_prim:
     description: ''
     mstr:
@@ -355,8 +354,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
-    source: microstrategy
     redis_cache: false
+    source: microstrategy
   r17_saglik_hasar:
     description: ''
     mstr:
@@ -369,8 +368,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
-    source: microstrategy
     redis_cache: false
+    source: microstrategy
   r18_saglik_uretim:
     description: ''
     mstr:
@@ -383,8 +382,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
-    source: microstrategy
     redis_cache: false
+    source: microstrategy
   r18_saglık_uretim:
     description: ''
     mstr:
@@ -397,8 +396,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
-    source: microstrategy
     redis_cache: false
+    source: microstrategy
   r19_saglik_anket_verisi:
     description: ''
     mstr:
@@ -411,8 +410,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
-    source: microstrategy
     redis_cache: false
+    source: microstrategy
   r1_yenileme_raporu:
     description: ''
     mstr:
@@ -425,8 +424,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
-    source: microstrategy
     redis_cache: false
+    source: microstrategy
   r2_uretim_raporu:
     description: ''
     mstr:
@@ -439,8 +438,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
-    source: microstrategy
     redis_cache: false
+    source: microstrategy
   r3_teklif_raporu:
     description: ''
     mstr:
@@ -453,8 +452,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
-    source: microstrategy
     redis_cache: false
+    source: microstrategy
   r4_acente_broker_raporu:
     description: ''
     mstr:
@@ -467,8 +466,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
-    source: microstrategy
     redis_cache: false
+    source: microstrategy
   r5_kkr_raporu:
     description: ''
     mstr:
@@ -481,8 +480,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
-    source: microstrategy
     redis_cache: false
+    source: microstrategy
   r6_acente_ekstre:
     description: ''
     mstr:
@@ -495,8 +494,8 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
-    source: microstrategy
     redis_cache: false
+    source: microstrategy
   r7_komisyon_gider_belgesi:
     description: ''
     mstr:
@@ -509,5 +508,5 @@ endpoints:
         summary: K52
     pagination:
       per_page: 100
-    source: microstrategy
     redis_cache: false
+    source: microstrategy
